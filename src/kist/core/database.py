@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from kist.errors import DatabaseError, DuplicatePartError, PartNotFoundError
-from kist.models import Part, ProprietaryPart, SemiJellybeanPart
+from kist.models import Ipn, Part, ProprietaryPart, SemiJellybeanPart
 
 _part_adapter = TypeAdapter(Part)
 
@@ -28,8 +28,8 @@ class PartsDatabase:
 
     def __init__(self, path: Path) -> None:
         self._path = path
-        self._parts: dict[str, Part] = {}
-        self._name_index: dict[str, str] = {}
+        self._parts: dict[Ipn, Part] = {}
+        self._name_index: dict[str, Ipn] = {}
 
     # -- Properties ----------------------------------------------------------
 
@@ -38,7 +38,7 @@ class PartsDatabase:
         return self._path
 
     @property
-    def parts(self) -> dict[str, Part]:
+    def parts(self) -> dict[Ipn, Part]:
         """Return a shallow copy of the internal parts dict."""
         return dict(self._parts)
 
@@ -51,9 +51,9 @@ class PartsDatabase:
         except (OSError, json.JSONDecodeError) as exc:
             raise DatabaseError(f"Failed to load {self._path}: {exc}") from exc
 
-        parts: dict[str, Part] = {}
+        parts: dict[Ipn, Part] = {}
         for uid, part_data in raw.get("parts", {}).items():
-            parts[uid] = _part_adapter.validate_python(part_data)
+            parts[Ipn(uid)] = _part_adapter.validate_python(part_data)
 
         self._parts = parts
         self._name_index = {part.name: uid for uid, part in parts.items()}
@@ -78,19 +78,19 @@ class PartsDatabase:
 
     # -- CRUD ----------------------------------------------------------------
 
-    def add(self, part: Part) -> str:
-        """Add a part, returning its generated UUID.
+    def add(self, part: Part) -> Ipn:
+        """Add a part, returning its generated IPN.
 
         Raises :class:`DuplicatePartError` if the name is already taken.
         """
         if part.name in self._name_index:
             raise DuplicatePartError(f"Part name already exists: {part.name}")
 
-        uid = str(uuid.uuid4())
-        self._parts[uid] = part
-        self._name_index[part.name] = uid
+        ipn = Ipn(str(uuid.uuid4()))
+        self._parts[ipn] = part
+        self._name_index[part.name] = ipn
         self.save()
-        return uid
+        return ipn
 
     def remove(self, name: str) -> None:
         """Remove a part by name.
@@ -110,15 +110,15 @@ class PartsDatabase:
         uid = self._resolve_name(name)
         return self._parts[uid]
 
-    def get_by_id(self, uid: str) -> Part:
-        """Look up a part by UUID.
+    def get_by_id(self, ipn: Ipn) -> Part:
+        """Look up a part by IPN.
 
-        Raises :class:`PartNotFoundError` if the UUID does not exist.
+        Raises :class:`PartNotFoundError` if the IPN does not exist.
         """
         try:
-            return self._parts[uid]
+            return self._parts[ipn]
         except KeyError:
-            raise PartNotFoundError(f"No part with id: {uid}") from None
+            raise PartNotFoundError(f"No part with IPN: {ipn}") from None
 
     def list_parts(self) -> list[Part]:
         """Return all parts sorted by name."""
@@ -135,7 +135,7 @@ class PartsDatabase:
 
     # -- Internals -----------------------------------------------------------
 
-    def _resolve_name(self, name: str) -> str:
+    def _resolve_name(self, name: str) -> Ipn:
         try:
             return self._name_index[name]
         except KeyError:

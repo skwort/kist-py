@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NewType
 
 from pydantic import BaseModel, ConfigDict, Discriminator, HttpUrl
+
+Ipn = NewType("Ipn", str)
 
 
 class Tier(StrEnum):

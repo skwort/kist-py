@@ -8,6 +8,7 @@ import pytest
 from kist.core.database import PartsDatabase, create_empty
 from kist.errors import DuplicatePartError, PartNotFoundError
 from kist.models import (
+    Ipn,
     JellybeanPart,
     ProprietaryPart,
     SemiJellybeanPart,
@@ -106,7 +107,7 @@ def test_get_missing_name_raises(db: PartsDatabase):
 
 def test_get_by_id_missing_raises(db: PartsDatabase):
     with pytest.raises(PartNotFoundError):
-        db.get_by_id("00000000-0000-0000-0000-000000000000")
+        db.get_by_id(Ipn("00000000-0000-0000-0000-000000000000"))
 
 
 # -- list_parts --------------------------------------------------------------
