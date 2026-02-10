@@ -5,7 +5,7 @@
 
 ## Context
 
-KIP manages a KiCad component library as a JSON file tracked in Git. The
+Kist manages a KiCad component library as a JSON file tracked in Git. The
 data model must support:
 
 1. Three tiers of component abstraction (proprietary, semi-jellybean,
@@ -74,14 +74,14 @@ structured fields. Users do not write names freeform. The name serves
 as the part's identity in the CLI and in KiCad's symbol chooser.
 
 If a part's specs change, the tool regenerates the name. The UUID
-stays. KIP can propagate name changes to KiCad references as a
+stays. Kist can propagate name changes to KiCad references as a
 controlled operation.
 
 CLI commands resolve by name:
 
 ```bash
-kip show RES-10K-1PCT-0603      # resolved to UUID internally
-kip alternates add CAP-CER-100n-50V-X7R-0603
+kist show RES-10K-1PCT-0603      # resolved to UUID internally
+kist alternates add CAP-CER-100n-50V-X7R-0603
 ```
 
 ### 2. Name Generation
@@ -234,7 +234,7 @@ part always produce the same name:
   form (`LQFP-64`); the name uses the normalised form (`LQFP64`).
 
 The name generation algorithm is implemented in `core/naming.py` and
-is the single source of truth. `kip check` validates that all stored
+is the single source of truth. `kist check` validates that all stored
 names match what the algorithm would produce from the part's current
 fields.
 
@@ -272,7 +272,7 @@ used as the default when adding a part, but can be overridden per-part.
 #### KiCad Library Mapping
 
 Each category maps directly to a KiCad symbol library file generated
-by KIP. The part name becomes the symbol name within that library.
+by Kist. The part name becomes the symbol name within that library.
 A sort-order prefix is applied at generation time for display purposes;
 the prefix is not part of the canonical category.
 
@@ -289,12 +289,12 @@ Category CAP  →  01-Capacitors.kicad_sym
 ```
 
 The `symbol` field in the data model stores the full KiCad reference
-(e.g. `00-Resistors:RES-10K-1PCT-0603`). For jellybean passives, KIP
+(e.g. `00-Resistors:RES-10K-1PCT-0603`). For jellybean passives, Kist
 generates both the library entry and the `symbol` field value
 automatically — the underlying KiCad symbol is a standard generic
-(`Device:R`, `Device:C`, etc.) wrapped in the KIP-managed library.
+(`Device:R`, `Device:C`, etc.) wrapped in the Kist-managed library.
 For ICs and other complex parts, the user links or imports a symbol
-and KIP writes it into the appropriate category library.
+and Kist writes it into the appropriate category library.
 
 Because KiCad's symbol chooser sorts alphabetically within a library,
 the naming convention's sort order directly affects discoverability.
@@ -469,8 +469,8 @@ jellybean parts, specs are required and define the part.
 Each category defines **key specifications** — the parametric fields
 that, together with `category`, `subcategory`, and `package`,
 constitute part identity for jellybean parts. Two jellybean parts with
-identical identity are the same part. `kip add` will refuse to create
-a duplicate, and `kip check` will flag it. Supplementary specs provide
+identical identity are the same part. `kist add` will refuse to create
+a duplicate, and `kist check` will flag it. Supplementary specs provide
 additional detail but do not affect identity or deduplication. Key
 specs only apply to jellybean parts — they drive name generation and
 dedup. Tier 1/2 specs have no key/non-key distinction.
@@ -486,7 +486,7 @@ and current ratings are different parts because their subcategories
 differ).
 
 Per-category conventions define which specification fields are expected.
-These conventions are enforced by the tool (`kip add` prompts, `kip
+These conventions are enforced by the tool (`kist add` prompts, `kist
 check` validates), not by the schema. Adding a new category never
 requires a schema change.
 
@@ -807,7 +807,7 @@ alternate-level form.
 
 ### 10. Storage Format
 
-A single `parts.json` file at the root of the kip library:
+A single `parts.json` file at the root of the kist library:
 
 ```json
 {
@@ -913,7 +913,7 @@ The `version` field enables future schema migrations. `parts` is a
 dictionary keyed by UUID for O(1) lookups and guaranteed uniqueness.
 
 The `name` field is unique across parts and serves as the CLI-facing
-identifier. KIP builds an in-memory name→UUID index at load time for
+identifier. Kist builds an in-memory name→UUID index at load time for
 fast resolution.
 
 A single file is appropriate for the expected scale (hundreds to low
@@ -940,7 +940,7 @@ suffix is freeform, becomes part of the stored name, and is included
 in the identity check (so the two entries are distinct).
 
 The first entry for a given identity has no suffix. Subsequent
-footprint variants require a suffix. `kip add` detects the collision
+footprint variants require a suffix. `kist add` detects the collision
 and prompts for a variant tag.
 
 This keeps the model simple. The alternative (a list of footprints per
@@ -958,7 +958,7 @@ handled as "add another part with a variant tag."
   Two engineers adding the same 10K 1% 0402 resistor get the same name
   — and the tool detects the duplicate via key spec matching.
 - **Safe renames**: Changing a part's specs regenerates the name. The
-  UUID key is untouched. KIP can propagate name changes to KiCad config
+  UUID key is untouched. Kist can propagate name changes to KiCad config
   as a controlled operation.
 - **Type safety**: Discriminated union catches invalid data at parse
   time. A proprietary part without an MPN fails validation immediately.
@@ -983,7 +983,7 @@ handled as "add another part with a variant tag."
 
 - **No parametric type safety**: Specification values are strings, so
   `"resistance": "banana"` is valid at the schema level. Validation
-  must happen at the tool level (`kip add`, `kip check`).
+  must happen at the tool level (`kist add`, `kist check`).
 - **Name uniqueness enforcement**: The name is unique but not the key,
   so uniqueness must be enforced by the CRUD layer rather than by the
   data structure.
@@ -998,7 +998,7 @@ handled as "add another part with a variant tag."
 - **Tier 1/2 spec field names are unstandardised**: One user writes
   `clock`, another writes `frequency`. Acceptable because tier 1/2
   specs are informational, not identity-defining. Tool-level
-  conventions (prompted by `kip add`) encourage consistency.
+  conventions (prompted by `kist add`) encourage consistency.
 
 ### Neutral
 
@@ -1020,7 +1020,7 @@ handled as "add another part with a variant tag."
 ### Files to Create
 
 ```
-src/kip/
+src/kist/
 ├── models/
 │   ├── __init__.py      # Re-export Part, Supplier, Alternate, enums
 │   └── part.py          # All models and enums
