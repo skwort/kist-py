@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "kip"
+name = "kist"
 version = "0.1.0"
 description = "KiCad parts manager"
 readme = "README.md"
@@ -38,10 +38,10 @@ dev = [
 ]
 
 [project.scripts]
-kip = "kip.cli.app:app"
+kist = "kist.cli.app:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/kip"]
+packages = ["src/kist"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src" = ""
@@ -68,10 +68,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"src/kip/cli/app.py" = ["B008"]  # typer.Option/Argument in defaults
+"src/kist/cli/app.py" = ["B008"]  # typer.Option/Argument in defaults
 
 [tool.ruff.lint.isort]
-known-first-party = ["kip"]
+known-first-party = ["kist"]
 
 # ty
 [tool.ty.environment]

@@ -194,7 +194,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kip"
+name = "kist"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

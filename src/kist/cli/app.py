@@ -1,11 +1,11 @@
-"""kip CLI entrypoint."""
+"""kist CLI entrypoint."""
 
 import typer
 
-from kip import __version__
+from kist import __version__
 
 app = typer.Typer(
-    name="kip",
+    name="kist",
     help="KiCad parts manager.",
     invoke_without_command=True,
     no_args_is_help=False,
@@ -19,7 +19,7 @@ def main(
 ) -> None:
     """KiCad parts manager."""
     if version:
-        typer.echo(f"kip {__version__}")
+        typer.echo(f"kist {__version__}")
         raise typer.Exit()
 
     if ctx.invoked_subcommand is None:
@@ -30,7 +30,7 @@ def main(
 
 @app.command()
 def init() -> None:
-    """Initialise a kip parts library in the current directory."""
+    """Initialise a kist parts library in the current directory."""
     typer.echo("Not yet implemented.")
 
 
