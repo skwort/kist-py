@@ -140,6 +140,10 @@ class JellybeanPart(PartBase):
     specifications: dict[str, str]
 
 
+# A Part is one of the three tier-specific models, selected at validation time
+# by the value of the ``tier`` field (Pydantic discriminated union).  Code that
+# handles an arbitrary part uses this type; Pydantic resolves it to the correct
+# concrete class on deserialisation.
 Part = Annotated[
     ProprietaryPart | SemiJellybeanPart | JellybeanPart,
     Discriminator("tier"),
