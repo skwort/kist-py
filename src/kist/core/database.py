@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from kist.errors import DatabaseError, DuplicatePartError, PartNotFoundError
+from kist.errors import DatabaseError, DuplicatePartError
 from kist.models import Ipn, Part, ProprietaryPart, SemiJellybeanPart
 
 # TypeAdapter provides validate/serialize for the Part discriminated union,
@@ -96,36 +96,21 @@ class PartsDatabase:
         self.save()
         return ipn
 
-    def remove(self, name: str) -> None:
-        """
-        Remove a part by name.
+    def remove(self, ipn: Ipn) -> Part | None:
+        """Remove a part by IPN, returning it (or ``None`` if not found)."""
+        part = self._parts.pop(ipn, None)
+        if part is not None:
+            self._name_index.pop(part.name, None)
+            self.save()
+        return part
 
-        Raises :class:`PartNotFoundError` if the name does not exist.
-        """
-        uid = self._resolve_name(name)
-        del self._parts[uid]
-        del self._name_index[name]
-        self.save()
+    def get(self, ipn: Ipn) -> Part | None:
+        """Look up a part by IPN, returning ``None`` if not found."""
+        return self._parts.get(ipn)
 
-    def get(self, name: str) -> Part:
-        """
-        Look up a part by name.
-
-        Raises :class:`PartNotFoundError` if the name does not exist.
-        """
-        uid = self._resolve_name(name)
-        return self._parts[uid]
-
-    def get_by_id(self, ipn: Ipn) -> Part:
-        """
-        Look up a part by IPN.
-
-        Raises :class:`PartNotFoundError` if the IPN does not exist.
-        """
-        try:
-            return self._parts[ipn]
-        except KeyError:
-            raise PartNotFoundError(f"No part with IPN: {ipn}") from None
+    def resolve(self, name: str) -> Ipn | None:
+        """Resolve a part name to its IPN, returning ``None`` if not found."""
+        return self._name_index.get(name)
 
     def list_parts(self) -> list[Part]:
         """Return all parts sorted by name."""
@@ -141,12 +126,6 @@ class PartsDatabase:
         return sorted(results, key=lambda p: p.name)
 
     # -- Internals -----------------------------------------------------------
-
-    def _resolve_name(self, name: str) -> Ipn:
-        try:
-            return self._name_index[name]
-        except KeyError:
-            raise PartNotFoundError(f"No part with name: {name}") from None
 
     @staticmethod
     def _matches(part: Part, query: str) -> bool:
