@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from kist.core.database import PartsDatabase, create_empty
-from kist.errors import DuplicatePartError, PartNotFoundError
+from kist.errors import DuplicatePartError
 from kist.models import (
     Ipn,
     JellybeanPart,
@@ -36,37 +36,35 @@ def test_load_empty_database(db: PartsDatabase):
 # -- add / get ---------------------------------------------------------------
 
 
-def test_add_and_get_by_name(
-    db: PartsDatabase, proprietary_part: ProprietaryPart
-):
-    uid = db.add(proprietary_part)
+def test_add_and_get(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    ipn = db.add(proprietary_part)
 
-    assert isinstance(uid, str)
-    assert len(uid) == 36  # UUID format
+    assert isinstance(ipn, str)
+    assert len(ipn) == 36  # UUID format
 
-    retrieved = db.get(proprietary_part.name)
+    retrieved = db.get(ipn)
     assert retrieved == proprietary_part
 
 
-def test_add_and_get_by_id(
-    db: PartsDatabase, proprietary_part: ProprietaryPart
-):
-    uid = db.add(proprietary_part)
+def test_add_and_resolve(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    ipn = db.add(proprietary_part)
 
-    retrieved = db.get_by_id(uid)
+    resolved = db.resolve(proprietary_part.name)
+    assert resolved is not None
+    assert resolved == ipn
+
+    retrieved = db.get(resolved)
     assert retrieved == proprietary_part
 
 
-def test_add_persists_to_disk(
-    db: PartsDatabase, proprietary_part: ProprietaryPart
-):
-    db.add(proprietary_part)
+def test_add_persists_to_disk(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    ipn = db.add(proprietary_part)
 
     # Load in a fresh instance
     db2 = PartsDatabase(db.path)
     db2.load()
     assert len(db2.list_parts()) == 1
-    assert db2.get("IC-STM32F405RGT6-LQFP64").mpn == "STM32F405RGT6"  # type: ignore[union-attr]
+    assert db2.get(ipn) == proprietary_part
 
 
 def test_add_duplicate_name_raises(
@@ -81,33 +79,29 @@ def test_add_duplicate_name_raises(
 # -- remove ------------------------------------------------------------------
 
 
-def test_remove_by_name(
-    db: PartsDatabase, proprietary_part: ProprietaryPart
-):
-    db.add(proprietary_part)
-    db.remove(proprietary_part.name)
+def test_remove(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    ipn = db.add(proprietary_part)
+    removed = db.remove(ipn)
 
+    assert removed == proprietary_part
     assert db.list_parts() == []
-    with pytest.raises(PartNotFoundError):
-        db.get(proprietary_part.name)
+    assert db.get(ipn) is None
+    assert db.resolve(proprietary_part.name) is None
 
 
-def test_remove_missing_raises(db: PartsDatabase):
-    with pytest.raises(PartNotFoundError):
-        db.remove("DOES-NOT-EXIST")
+def test_remove_missing_returns_none(db: PartsDatabase):
+    assert db.remove(Ipn("00000000-0000-0000-0000-000000000000")) is None
 
 
-# -- get missing -------------------------------------------------------------
+# -- get / resolve missing ---------------------------------------------------
 
 
-def test_get_missing_name_raises(db: PartsDatabase):
-    with pytest.raises(PartNotFoundError):
-        db.get("DOES-NOT-EXIST")
+def test_get_missing_returns_none(db: PartsDatabase):
+    assert db.get(Ipn("00000000-0000-0000-0000-000000000000")) is None
 
 
-def test_get_by_id_missing_raises(db: PartsDatabase):
-    with pytest.raises(PartNotFoundError):
-        db.get_by_id(Ipn("00000000-0000-0000-0000-000000000000"))
+def test_resolve_missing_returns_none(db: PartsDatabase):
+    assert db.resolve("DOES-NOT-EXIST") is None
 
 
 # -- list_parts --------------------------------------------------------------
@@ -119,8 +113,8 @@ def test_list_parts_sorted(
     semi_jellybean_part: SemiJellybeanPart,
     jellybean_part: JellybeanPart,
 ):
-    db.add(jellybean_part)       # RES-10K-1PCT-0603
-    db.add(proprietary_part)     # IC-STM32F405RGT6-LQFP64
+    db.add(jellybean_part)  # RES-10K-1PCT-0603
+    db.add(proprietary_part)  # IC-STM32F405RGT6-LQFP64
     db.add(semi_jellybean_part)  # IC-TL072-SO8
 
     names = [p.name for p in db.list_parts()]
@@ -169,18 +163,14 @@ def test_search_by_tag(
     assert results[0].name == "IC-STM32F405RGT6-LQFP64"
 
 
-def test_search_by_mpn(
-    db: PartsDatabase, semi_jellybean_part: SemiJellybeanPart
-):
+def test_search_by_mpn(db: PartsDatabase, semi_jellybean_part: SemiJellybeanPart):
     db.add(semi_jellybean_part)
 
     results = db.search("TL072CDR")
     assert len(results) == 1
 
 
-def test_search_by_base_pn(
-    db: PartsDatabase, semi_jellybean_part: SemiJellybeanPart
-):
+def test_search_by_base_pn(db: PartsDatabase, semi_jellybean_part: SemiJellybeanPart):
     db.add(semi_jellybean_part)
 
     results = db.search("TL072")
@@ -198,12 +188,12 @@ def test_roundtrip_all_tiers(
 ):
     """Add all three tiers, save, reload in fresh instance, verify."""
     parts = [proprietary_part, semi_jellybean_part, jellybean_part]
-    uids = [db.add(p) for p in parts]
+    ipns = [db.add(p) for p in parts]
 
     # Reload from disk
     db2 = PartsDatabase(db.path)
     db2.load()
 
     assert len(db2.list_parts()) == 3
-    for uid, original in zip(uids, parts, strict=True):
-        assert db2.get_by_id(uid) == original
+    for ipn, original in zip(ipns, parts, strict=True):
+        assert db2.get(ipn) == original
