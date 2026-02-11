@@ -11,6 +11,9 @@ from pydantic import TypeAdapter
 from kist.errors import DatabaseError, DuplicatePartError, PartNotFoundError
 from kist.models import Ipn, Part, ProprietaryPart, SemiJellybeanPart
 
+# TypeAdapter provides validate/serialize for the Part discriminated union,
+# which is a type alias (not a BaseModel subclass) and has no .model_validate().
+# Instantiated once at module level to avoid recompiling the schema per call.
 _part_adapter = TypeAdapter(Part)
 
 
@@ -23,7 +26,7 @@ def create_empty(path: Path) -> None:
 class PartsDatabase:
     """CRUD interface over a ``parts.json`` file.
 
-    The file is the source of truth — every mutation saves immediately.
+    The file is the source of truth -- every mutation saves immediately.
     """
 
     def __init__(self, path: Path) -> None:
@@ -79,7 +82,8 @@ class PartsDatabase:
     # -- CRUD ----------------------------------------------------------------
 
     def add(self, part: Part) -> Ipn:
-        """Add a part, returning its generated IPN.
+        """
+        Add a part, returning its generated IPN.
 
         Raises :class:`DuplicatePartError` if the name is already taken.
         """
@@ -93,7 +97,8 @@ class PartsDatabase:
         return ipn
 
     def remove(self, name: str) -> None:
-        """Remove a part by name.
+        """
+        Remove a part by name.
 
         Raises :class:`PartNotFoundError` if the name does not exist.
         """
@@ -103,7 +108,8 @@ class PartsDatabase:
         self.save()
 
     def get(self, name: str) -> Part:
-        """Look up a part by name.
+        """
+        Look up a part by name.
 
         Raises :class:`PartNotFoundError` if the name does not exist.
         """
@@ -111,7 +117,8 @@ class PartsDatabase:
         return self._parts[uid]
 
     def get_by_id(self, ipn: Ipn) -> Part:
-        """Look up a part by IPN.
+        """
+        Look up a part by IPN.
 
         Raises :class:`PartNotFoundError` if the IPN does not exist.
         """

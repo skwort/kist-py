@@ -111,9 +111,22 @@ def test_tier_members():
 
 def test_category_members():
     expected = {
-        "RES", "CAP", "IND", "DIO", "TRAN", "IC", "CONN",
-        "SW", "REL", "XTAL", "FUSE", "TFRM", "TP", "FID",
-        "MECH", "MISC",
+        "RES",
+        "CAP",
+        "IND",
+        "DIO",
+        "TRAN",
+        "IC",
+        "CONN",
+        "SW",
+        "REL",
+        "XTAL",
+        "FUSE",
+        "TFRM",
+        "TP",
+        "FID",
+        "MECH",
+        "MISC",
     }
     assert {c.value for c in Category} == expected
 
@@ -124,8 +137,22 @@ def test_mounting_members():
 
 def test_refdes_members():
     expected = {
-        "R", "C", "L", "D", "Q", "U", "J", "SW",
-        "K", "Y", "F", "T", "TP", "FID", "H", "FL",
+        "R",
+        "C",
+        "L",
+        "D",
+        "Q",
+        "U",
+        "J",
+        "SW",
+        "K",
+        "Y",
+        "F",
+        "T",
+        "TP",
+        "FID",
+        "H",
+        "FL",
     }
     assert {r.value for r in RefDes} == expected
 
