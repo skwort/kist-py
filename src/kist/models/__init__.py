@@ -8,16 +8,13 @@ from kist.models.config import (
     ProjectRef,
 )
 from kist.models.part import (
-    CATEGORY_REFDES,
     Alternate,
-    Category,
     Ipn,
     JellybeanPart,
     Mounting,
     Part,
     PartBase,
     ProprietaryPart,
-    RefDes,
     SemiJellybeanPart,
     SupplierInfo,
     Tier,
@@ -25,8 +22,6 @@ from kist.models.part import (
 
 __all__ = [
     "Alternate",
-    "Category",
-    "CATEGORY_REFDES",
     "CategoryDef",
     "DEFAULT_SUPPLIERS",
     "GlobalConfig",
@@ -38,7 +33,6 @@ __all__ = [
     "PartBase",
     "ProjectRef",
     "ProprietaryPart",
-    "RefDes",
     "SemiJellybeanPart",
     "SupplierInfo",
     "Tier",

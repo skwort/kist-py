@@ -4,19 +4,25 @@ from pathlib import Path
 
 import pytest
 
+from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.core.database import PartsDatabase, create_empty
 from kist.core.sync import sync_symbols
 from kist.kicad.mapping import library_filename
 from kist.kicad.symbols import SymbolLibrary
 from kist.models import (
-    Category,
     JellybeanPart,
     LibraryConfig,
     Mounting,
     ProprietaryPart,
-    RefDes,
     Tier,
 )
+
+CATS = WELL_KNOWN_CATEGORIES
+
+
+def _config_with_categories() -> LibraryConfig:
+    return LibraryConfig(categories=dict(CATS))
+
 
 # --- fixtures and factories ---
 
@@ -31,7 +37,7 @@ def library(tmp_path: Path) -> tuple[Path, PartsDatabase, LibraryConfig]:
     create_empty(db_path)
     db = PartsDatabase(db_path)
     db.load()
-    config = LibraryConfig()
+    config = _config_with_categories()
     return root, db, config
 
 
@@ -41,13 +47,13 @@ def _make_resistor(resistance: str, tolerance: str, package: str) -> JellybeanPa
         name=name,
         tier=Tier.JELLYBEAN,
         description=f"{resistance} {tolerance} {package} resistor",
-        category=Category.RES,
+        category="RES",
         package=package,
         mounting=Mounting.SMD,
         symbol=f"00k-Resistors:{name}",
         footprint=f"Resistor_SMD:R_{package}",
-        value="10k",
-        reference=RefDes.R,
+        value="10K",
+        reference="R",
         specifications={"resistance": resistance, "tolerance": tolerance},
     )
 
@@ -58,15 +64,27 @@ def _make_capacitor(capacitance: str, voltage: str, package: str) -> JellybeanPa
         name=name,
         tier=Tier.JELLYBEAN,
         description=f"{capacitance} {voltage} {package} capacitor",
-        category=Category.CAP,
+        category="CAP",
         package=package,
         mounting=Mounting.SMD,
-        symbol=f"01k-Capacitors:{name}",
+        symbol=f"00k-Capacitors:{name}",
         footprint=f"Capacitor_SMD:C_{package}",
         value="100n",
-        reference=RefDes.C,
+        reference="C",
         specifications={"capacitance": capacitance, "voltage_rating": voltage},
     )
+
+
+def _res_filename() -> str:
+    return library_filename(CATS["RES"].name)
+
+
+def _cap_filename() -> str:
+    return library_filename(CATS["CAP"].name)
+
+
+def _ic_filename() -> str:
+    return library_filename(CATS["IC"].name)
 
 
 # --- sync_symbols ---
@@ -86,7 +104,7 @@ def test_one_resistor_creates_symbol_file(library):
 
     sync_symbols(root, db, config)
 
-    path = root / "symbols" / library_filename(Category.RES)
+    path = root / "symbols" / _res_filename()
     assert path.exists()
     lib = SymbolLibrary.load(path)
     assert part.name in lib.symbols()
@@ -101,8 +119,8 @@ def test_multiple_categories_create_multiple_files(library):
 
     sync_symbols(root, db, config)
 
-    res_path = root / "symbols" / library_filename(Category.RES)
-    cap_path = root / "symbols" / library_filename(Category.CAP)
+    res_path = root / "symbols" / _res_filename()
+    cap_path = root / "symbols" / _cap_filename()
     assert res_path.exists()
     assert cap_path.exists()
 
@@ -122,7 +140,7 @@ def test_sync_is_idempotent(library):
     db.add(part)
 
     sync_symbols(root, db, config)
-    path = root / "symbols" / library_filename(Category.RES)
+    path = root / "symbols" / _res_filename()
     first_content = path.read_text()
 
     sync_symbols(root, db, config)
@@ -145,7 +163,7 @@ def test_updated_part_reflected_after_resync(library):
 
     sync_symbols(root, db, config)
 
-    path = root / "symbols" / library_filename(Category.RES)
+    path = root / "symbols" / _res_filename()
     lib = SymbolLibrary.load(path)
     sym = lib.get_symbol(part.name)
     assert sym is not None
@@ -171,20 +189,20 @@ def test_proprietary_part_creates_stub_symbol(library):
         name="IC-STM32F405-LQFP64",
         tier=Tier.PROPRIETARY,
         description="ARM Cortex-M4 MCU",
-        category=Category.IC,
+        category="IC",
         package="LQFP-64",
         mpn="STM32F405RGT6",
         manufacturer="STMicroelectronics",
-        symbol="05k-ICs:IC-STM32F405-LQFP64",
+        symbol="00k-ICs:IC-STM32F405-LQFP64",
         footprint="Package_QFP:LQFP-64_10x10mm_P0.5mm",
         value="STM32F405RGT6",
-        reference=RefDes.U,
+        reference="U",
     )
     db.add(part)
 
     sync_symbols(root, db, config)
 
-    path = root / "symbols" / library_filename(Category.IC)
+    path = root / "symbols" / _ic_filename()
     assert path.exists()
     lib = SymbolLibrary.load(path)
     assert part.name in lib.symbols()
@@ -198,12 +216,12 @@ def test_creates_symbols_dir_if_missing(tmp_path):
     create_empty(db_path)
     db = PartsDatabase(db_path)
     db.load()
-    config = LibraryConfig()
+    config = _config_with_categories()
 
     part = _make_resistor("1kΩ", "5%", "0402")
     db.add(part)
 
     sync_symbols(root, db, config)
 
-    path = root / "symbols" / library_filename(Category.RES)
+    path = root / "symbols" / _res_filename()
     assert path.exists()

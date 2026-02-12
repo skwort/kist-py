@@ -47,7 +47,7 @@ def test_search_no_matches(library):
 
 
 def test_search_by_description(library):
-    result = runner.invoke(app, ["search", "thick film"])
+    result = runner.invoke(app, ["search", "resistors"])
     assert result.exit_code == 0
     assert "RES-10K-1PCT-0603" in result.output
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.kicad import (
     SymbolLibrary,
     build_properties,
@@ -13,6 +14,8 @@ from kist.kicad import (
 )
 from kist.models import JellybeanPart, ProprietaryPart, SemiJellybeanPart
 from kist.sexpr import find_all
+
+CATS = WELL_KNOWN_CATEGORIES
 
 
 def test_full_workflow(
@@ -26,7 +29,7 @@ def test_full_workflow(
 
     parts = [jellybean_part, proprietary_part, semi_jellybean_part]
     for part in parts:
-        sym = symbol_for_part(part)
+        sym = symbol_for_part(part, CATS)
         lib.set_symbol(part.name, sym)
 
     # All symbols present before save
@@ -75,7 +78,9 @@ def test_full_workflow(
 
     # symbol_reference produces correct lib:name strings
     for part in parts:
-        ref = symbol_reference(part.category, part.name)
-        filename = library_filename(part.category)
+        cat_def = CATS.get(part.category)
+        cat_name = cat_def.name if cat_def else part.category
+        ref = symbol_reference(cat_name, part.name)
+        filename = library_filename(cat_name)
         assert ref.startswith(filename.removesuffix(".kicad_sym"))
         assert ref.endswith(f":{part.name}")

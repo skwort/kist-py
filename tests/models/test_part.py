@@ -4,13 +4,10 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from kist.models import (
-    CATEGORY_REFDES,
-    Category,
     JellybeanPart,
     Mounting,
     Part,
     ProprietaryPart,
-    RefDes,
     SemiJellybeanPart,
     Tier,
 )
@@ -90,14 +87,14 @@ def test_semi_jellybean_alternates_default():
         name="IC-LM7805-TO220",
         tier=Tier.SEMI_JELLYBEAN,
         description="5V linear regulator",
-        category=Category.IC,
+        category="IC",
         base_pn="LM7805",
         mpn="LM7805CT",
         manufacturer="Onsemi",
         symbol="Regulator_Linear:LM7805",
         footprint="Package_TO_SOT_THT:TO-220-3_Vertical",
         value="LM7805",
-        reference=RefDes.U,
+        reference="U",
     )
     assert part.alternates == []
 
@@ -109,58 +106,5 @@ def test_tier_members():
     assert set(Tier) == {"proprietary", "semi-jellybean", "jellybean"}
 
 
-def test_category_members():
-    expected = {
-        "RES",
-        "CAP",
-        "IND",
-        "DIO",
-        "TRAN",
-        "IC",
-        "CONN",
-        "SW",
-        "REL",
-        "XTAL",
-        "FUSE",
-        "TFRM",
-        "TP",
-        "FID",
-        "MECH",
-        "MISC",
-    }
-    assert {c.value for c in Category} == expected
-
-
 def test_mounting_members():
     assert set(Mounting) == {"smd", "tht", "other"}
-
-
-def test_refdes_members():
-    expected = {
-        "R",
-        "C",
-        "L",
-        "D",
-        "Q",
-        "U",
-        "J",
-        "SW",
-        "K",
-        "Y",
-        "F",
-        "T",
-        "TP",
-        "FID",
-        "H",
-        "FL",
-    }
-    assert {r.value for r in RefDes} == expected
-
-
-# --- CATEGORY_REFDES mapping test ---
-
-
-def test_category_refdes_covers_all_categories():
-    """Every Category member has a mapping in CATEGORY_REFDES."""
-    for cat in Category:
-        assert cat in CATEGORY_REFDES, f"Missing mapping for {cat}"

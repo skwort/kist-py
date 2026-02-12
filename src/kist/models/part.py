@@ -1,4 +1,4 @@
-"""Part data models — enums, base models, and discriminated union."""
+"""Part data models -- tier-specific models and discriminated union."""
 
 from __future__ import annotations
 
@@ -16,70 +16,10 @@ class Tier(StrEnum):
     JELLYBEAN = "jellybean"
 
 
-class Category(StrEnum):
-    RES = "RES"
-    CAP = "CAP"
-    IND = "IND"
-    DIO = "DIO"
-    TRAN = "TRAN"
-    IC = "IC"
-    CONN = "CONN"
-    SW = "SW"
-    REL = "REL"
-    XTAL = "XTAL"
-    FUSE = "FUSE"
-    TFRM = "TFRM"
-    TP = "TP"
-    FID = "FID"
-    MECH = "MECH"
-    MISC = "MISC"
-
-
 class Mounting(StrEnum):
     SMD = "smd"
     THT = "tht"
     OTHER = "other"
-
-
-class RefDes(StrEnum):
-    """Reference designator prefixes per IEEE 315 / IEC 60617."""
-
-    R = "R"
-    C = "C"
-    L = "L"
-    D = "D"
-    Q = "Q"
-    U = "U"
-    J = "J"
-    SW = "SW"
-    K = "K"
-    Y = "Y"
-    F = "F"
-    T = "T"
-    TP = "TP"
-    FID = "FID"
-    H = "H"
-    FL = "FL"
-
-
-CATEGORY_REFDES: dict[Category, RefDes] = {
-    Category.RES: RefDes.R,
-    Category.CAP: RefDes.C,
-    Category.IND: RefDes.L,
-    Category.DIO: RefDes.D,
-    Category.TRAN: RefDes.Q,
-    Category.IC: RefDes.U,
-    Category.CONN: RefDes.J,
-    Category.SW: RefDes.SW,
-    Category.REL: RefDes.K,
-    Category.XTAL: RefDes.Y,
-    Category.FUSE: RefDes.F,
-    Category.TFRM: RefDes.T,
-    Category.TP: RefDes.TP,
-    Category.FID: RefDes.FID,
-    Category.MECH: RefDes.H,
-    Category.MISC: RefDes.U,
-}
 
 
 class SupplierInfo(BaseModel):
@@ -101,7 +41,7 @@ class PartBase(BaseModel):
 
     name: str
     description: str
-    category: Category
+    category: str
     subcategory: str | None = None
     package: str | None = None
     mounting: Mounting | None = None
@@ -111,7 +51,7 @@ class PartBase(BaseModel):
     symbol: str
     footprint: str
     value: str
-    reference: RefDes
+    reference: str
     keywords: list[str] = []
     specifications: dict[str, str] | None = None
     exclude_from_bom: bool = False

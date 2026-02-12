@@ -145,7 +145,7 @@ def test_search_by_description(
     db.add(proprietary_part)
     db.add(jellybean_part)
 
-    results = db.search("thick film")
+    results = db.search("resistors")
     assert len(results) == 1
     assert results[0].name == "RES-10K-1PCT-0603"
 

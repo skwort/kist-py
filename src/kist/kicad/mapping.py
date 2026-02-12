@@ -8,37 +8,23 @@ marks kist-managed libraries.
 
 from __future__ import annotations
 
-from kist.models import Category
 
-# -- Category-to-library mapping ---
-
-CATEGORY_LIBRARY: dict[Category, str] = {
-    Category.RES: "00k-Resistors",
-    Category.CAP: "01k-Capacitors",
-    Category.IND: "02k-Inductors",
-    Category.DIO: "03k-Diodes",
-    Category.TRAN: "04k-Transistors",
-    Category.IC: "05k-ICs",
-    Category.CONN: "06k-Connectors",
-    Category.SW: "07k-Switches",
-    Category.REL: "08k-Relays",
-    Category.XTAL: "09k-Crystals",
-    Category.FUSE: "10k-Fuses",
-    Category.TFRM: "11k-Transformers",
-    Category.TP: "12k-TestPoints",
-    Category.FID: "13k-Fiducials",
-    Category.MECH: "14k-Mechanical",
-    Category.MISC: "15k-Misc",
-}
+def library_filename(
+    category_name: str,
+    library_prefix: str = "00k",
+    separator: str = "-",
+) -> str:
+    """Return the ``.kicad_sym`` filename for a category name like ``"Resistors"``."""
+    return f"{library_prefix}{separator}{category_name}.kicad_sym"
 
 
-def library_filename(category: Category) -> str:
-    """Return the ``.kicad_sym`` filename for *category*."""
-    return f"{CATEGORY_LIBRARY[category]}.kicad_sym"
-
-
-def symbol_reference(category: Category, part_name: str) -> str:
+def symbol_reference(
+    category_name: str,
+    part_name: str,
+    library_prefix: str = "00k",
+    separator: str = "-",
+) -> str:
     """
     Return a full KiCad symbol reference like ``00k-Resistors:RES-10K-1PCT-0603``.
     """
-    return f"{CATEGORY_LIBRARY[category]}:{part_name}"
+    return f"{library_prefix}{separator}{category_name}:{part_name}"

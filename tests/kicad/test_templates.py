@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.kicad.templates import (
     build_properties,
     capacitor_symbol,
@@ -14,6 +15,8 @@ from kist.kicad.templates import (
 )
 from kist.models import JellybeanPart, ProprietaryPart
 from kist.sexpr import dumps, find_all, parse_one
+
+CATS = WELL_KNOWN_CATEGORIES
 
 # -- Helpers ---
 
@@ -98,10 +101,10 @@ def test_stub_has_no_pins():
 def test_build_properties_jellybean(jellybean_part: JellybeanPart):
     props = build_properties(jellybean_part)
     assert props["Reference"] == "R"
-    assert props["Value"] == "10k"
+    assert props["Value"] == "10K"
     assert props["Footprint"] == "Resistor_SMD:R_0603_1608Metric"
     assert props["Datasheet"] == "~"  # no datasheet URL on fixture
-    assert props["Description"] == "10kΩ 1% 0603 thick film resistor"
+    assert props["Description"] == "10kΩ 1% 0603 resistors"
     assert "basic" in props["ki_keywords"]
 
 
@@ -123,14 +126,14 @@ def test_build_properties_semi_jellybean(semi_jellybean_part):
 
 
 def test_symbol_for_part_resistor(jellybean_part: JellybeanPart):
-    sym = symbol_for_part(jellybean_part)
+    sym = symbol_for_part(jellybean_part, CATS)
     # Jellybean resistor gets full graphic template
     assert _count_pins(sym) == 2
     assert sym[1] == jellybean_part.name
 
 
 def test_symbol_for_part_ic(proprietary_part: ProprietaryPart):
-    sym = symbol_for_part(proprietary_part)
+    sym = symbol_for_part(proprietary_part, CATS)
     # IC gets a stub -- no pins
     assert _count_pins(sym) == 0
     assert sym[1] == proprietary_part.name

@@ -9,7 +9,10 @@ from the KiCad 9.0 Device library.
 
 from __future__ import annotations
 
-from kist.models import Category, Part, PartBase, Tier
+from collections.abc import Callable
+
+from kist.models import Part, PartBase, Tier
+from kist.models.config import CategoryDef
 from kist.sexpr import Atom, SExpr
 
 # -- Helpers ---
@@ -82,7 +85,7 @@ def build_properties(part: PartBase) -> dict[str, str]:
     datasheet = str(part.datasheet) if part.datasheet else "~"
     keywords = " ".join(part.keywords + part.tags)
     return {
-        "Reference": part.reference.value,
+        "Reference": part.reference,
         "Value": part.value,
         "Footprint": part.footprint,
         "Datasheet": datasheet,
@@ -437,23 +440,29 @@ def stub_symbol(name: str, props: dict[str, str]) -> list[SExpr]:
 
 # -- Dispatch ---
 
-# TODO: make resistor style (US/IEC) configurable via library config.
-# See resistor_symbol (US zigzag) and resistor_symbol_iec (IEC rectangle).
-_JELLYBEAN_TEMPLATES = {
-    Category.RES: resistor_symbol,
-    Category.CAP: capacitor_symbol,
-    Category.IND: inductor_symbol,
+_TEMPLATES: dict[str, Callable] = {
+    "resistor": resistor_symbol,
+    "resistor_iec": resistor_symbol_iec,
+    "capacitor": capacitor_symbol,
+    "inductor": inductor_symbol,
 }
 
 
-def symbol_for_part(part: Part) -> list[SExpr]:
+def symbol_for_part(
+    part: Part,
+    categories: dict[str, CategoryDef] | None = None,
+) -> list[SExpr]:
     """
     Generate the appropriate symbol tree for *part*.
 
-    Jellybean resistors, capacitors, and inductors get full graphic
-    templates. Everything else gets a stub with properties only.
+    Jellybean parts whose category has a ``symbol_template`` get full
+    graphic templates. Everything else gets a stub with properties only.
     """
     props = build_properties(part)
-    if part.tier == Tier.JELLYBEAN and part.category in _JELLYBEAN_TEMPLATES:
-        return _JELLYBEAN_TEMPLATES[part.category](part.name, props)
+    if part.tier == Tier.JELLYBEAN and categories:
+        cat_def = categories.get(part.category)
+        if cat_def and cat_def.symbol_template:
+            template_fn = _TEMPLATES.get(cat_def.symbol_template)
+            if template_fn:
+                return template_fn(part.name, props)
     return stub_symbol(part.name, props)

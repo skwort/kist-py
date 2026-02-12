@@ -9,7 +9,6 @@ from kist.core.database import PartsDatabase
 from kist.kicad.mapping import library_filename
 from kist.kicad.symbols import SymbolLibrary
 from kist.kicad.templates import symbol_for_part
-from kist.models import Category
 from kist.models.config import LibraryConfig
 
 
@@ -29,12 +28,16 @@ def sync_symbols(
     symbols_dir.mkdir(parents=True, exist_ok=True)
 
     # Group parts by category
-    by_category: dict[Category, list] = defaultdict(list)
+    by_category: dict[str, list] = defaultdict(list)
     for part in db.list_parts():
         by_category[part.category].append(part)
 
-    for category, parts in by_category.items():
-        path = symbols_dir / library_filename(category)
+    for category_code, parts in by_category.items():
+        cat_def = config.categories.get(category_code)
+        cat_name = cat_def.name if cat_def else category_code
+        path = symbols_dir / library_filename(
+            cat_name, config.library_prefix, config.separator
+        )
 
         if path.exists():
             lib = SymbolLibrary.load(path)
@@ -42,6 +45,6 @@ def sync_symbols(
             lib = SymbolLibrary.empty()
 
         for part in parts:
-            lib.set_symbol(part.name, symbol_for_part(part))
+            lib.set_symbol(part.name, symbol_for_part(part, config.categories))
 
         lib.save(path)

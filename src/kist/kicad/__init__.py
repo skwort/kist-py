@@ -1,6 +1,6 @@
 """KiCad file handling -- symbol libraries, templates, and category mapping."""
 
-from kist.kicad.mapping import CATEGORY_LIBRARY, library_filename, symbol_reference
+from kist.kicad.mapping import library_filename, symbol_reference
 from kist.kicad.symbols import SymbolLibrary
 from kist.kicad.templates import (
     build_properties,
@@ -13,7 +13,6 @@ from kist.kicad.templates import (
 )
 
 __all__ = [
-    "CATEGORY_LIBRARY",
     "SymbolLibrary",
     "build_properties",
     "capacitor_symbol",
