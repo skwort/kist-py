@@ -11,3 +11,4 @@ parts.db
 *.sqlite3
 .direnv/
 result
+tmp/

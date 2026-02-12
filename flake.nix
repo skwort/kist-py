@@ -22,6 +22,7 @@
         # Tools
         jq
         just
+        prek
       ];
 
       shellHook = ''
