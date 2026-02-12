@@ -3,6 +3,18 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+from kist.models.part import (
+    Category,
+    JellybeanPart,
+    ProprietaryPart,
+    SemiJellybeanPart,
+)
+
+if TYPE_CHECKING:
+    from kist.models.part import Part
 
 _SI_PREFIXES: dict[str, float] = {
     "p": 1e-12,
@@ -360,3 +372,277 @@ def normalise_package(s: str) -> str:
     # Unknown: uppercase, strip hyphens between alpha and digits
     result = _PKG_HYPHEN_RE.sub(r"\1\2", s)
     return result.upper()
+
+
+# -- Key specs and spec normalisers (ADR-001 §7) ----------------------------
+
+KEY_SPECS: dict[tuple[Category, str | None], list[str]] = {
+    (Category.RES, None): ["resistance", "tolerance"],
+    (Category.CAP, "CER"): ["capacitance", "voltage_rating", "dielectric"],
+    (Category.CAP, "ELEC"): ["capacitance", "voltage_rating"],
+    (Category.CAP, "TANT"): ["capacitance", "voltage_rating"],
+    (Category.CAP, "FILM"): ["capacitance", "voltage_rating"],
+    (Category.IND, None): ["inductance", "current_rating"],
+    (Category.IND, "FERRITE"): ["impedance_100mhz", "current_rating"],
+    (Category.IND, "CM"): ["impedance", "current_rating"],
+    (Category.IND, "CHOKE"): ["inductance", "current_rating"],
+    (Category.DIO, None): ["reverse_voltage", "forward_current"],
+    (Category.DIO, "SCHOTTKY"): ["reverse_voltage", "forward_current"],
+    (Category.DIO, "ZENER"): ["zener_voltage", "power_rating"],
+    (Category.DIO, "TVS"): ["standoff_voltage", "peak_power"],
+    (Category.DIO, "LED"): ["colour"],
+    (Category.TRAN, "NMOS"): ["vds_max", "id_max"],
+    (Category.TRAN, "PMOS"): ["vds_max", "id_max"],
+    (Category.TRAN, "NPN"): ["vceo", "ic_max"],
+    (Category.TRAN, "PNP"): ["vceo", "ic_max"],
+    (Category.FUSE, None): ["current_rating", "voltage_rating"],
+    (Category.FUSE, "PTC"): ["hold_current", "voltage_rating"],
+    (Category.XTAL, None): ["frequency", "load_capacitance"],
+}
+
+SPEC_NORMALISERS: dict[str, Callable[[str], str]] = {
+    "resistance": normalise_resistance,
+    "capacitance": normalise_capacitance,
+    "inductance": normalise_inductance,
+    "tolerance": normalise_percentage,
+    "voltage_rating": normalise_voltage,
+    "reverse_voltage": normalise_voltage,
+    "zener_voltage": normalise_voltage,
+    "standoff_voltage": normalise_voltage,
+    "vds_max": normalise_voltage,
+    "vceo": normalise_voltage,
+    "forward_current": normalise_current,
+    "current_rating": normalise_current,
+    "id_max": normalise_current,
+    "ic_max": normalise_current,
+    "hold_current": normalise_current,
+    "power_rating": normalise_power,
+    "peak_power": normalise_power,
+    "impedance_100mhz": normalise_impedance,
+    "impedance": normalise_impedance,
+    "frequency": normalise_frequency,
+    "load_capacitance": normalise_capacitance,
+    "dielectric": str.upper,
+    "colour": str.upper,
+}
+
+# Lowercase-multiplier tiers for schematic display values (KiCad convention)
+_VALUE_RES_TIERS: list[tuple[float, str]] = [
+    (1.0, "R"),
+    (1e3, "k"),
+    (1e6, "M"),
+    (1e9, "G"),
+]
+
+# Category names for human-readable descriptions
+_CATEGORY_NAMES: dict[Category, str] = {
+    Category.RES: "resistor",
+    Category.CAP: "capacitor",
+    Category.IND: "inductor",
+    Category.DIO: "diode",
+    Category.TRAN: "transistor",
+    Category.XTAL: "crystal",
+    Category.FUSE: "fuse",
+}
+
+_CAP_SUBCAT_NAMES: dict[str, str] = {
+    "CER": "ceramic",
+    "ELEC": "electrolytic",
+    "TANT": "tantalum",
+    "FILM": "film",
+}
+
+
+# -- Name generation (ADR-001 §2) -------------------------------------------
+
+
+def _normalise_spec(field: str, value: str) -> str:
+    """Normalise a single spec value using the appropriate normaliser."""
+    normaliser = SPEC_NORMALISERS.get(field)
+    if normaliser:
+        return normaliser(value)
+    return value.upper()
+
+
+def _get_key_specs(part: JellybeanPart) -> list[str]:
+    """
+    Look up and return the key spec field names for a jellybean part.
+
+    Falls back to (category, None) if the exact (category, subcategory)
+    pair isn't registered.
+    """
+    key = (part.category, part.subcategory)
+    fields = KEY_SPECS.get(key)
+    if fields is None:
+        fields = KEY_SPECS.get((part.category, None), [])
+    return fields
+
+
+def generate_name(part: Part) -> str:
+    """
+    Generate the canonical part name from structured fields.
+
+    Dispatches by tier:
+    - Proprietary: ``CATEGORY-MPN-PACKAGE``
+    - Semi-jellybean: ``CATEGORY-BASE_PN-PACKAGE``
+    - Jellybean: ``CATEGORY[-SUBCATEGORY]-SPECS-PACKAGE``
+
+    Package is always last (before footprint variant). Appends
+    ``-VARIANT`` if ``footprint_variant`` is set.
+    """
+    pkg = normalise_package(part.package) if part.package else ""
+
+    if isinstance(part, ProprietaryPart):
+        segments = [part.category.value, part.mpn]
+
+    elif isinstance(part, SemiJellybeanPart):
+        segments = [part.category.value, part.base_pn]
+
+    else:
+        # Jellybean
+        segments = [part.category.value]
+        if part.subcategory:
+            segments.append(part.subcategory.upper())
+
+        # Normalise key specs in order
+        for field in _get_key_specs(part):
+            raw = part.specifications.get(field, "")
+            if raw:
+                segments.append(_normalise_spec(field, raw))
+
+    if pkg:
+        segments.append(pkg)
+
+    if part.footprint_variant:
+        segments.append(part.footprint_variant.upper())
+
+    return "-".join(segments)
+
+
+# -- Value generation (ADR-001 §8) ------------------------------------------
+
+
+def generate_value(part: Part) -> str:
+    """
+    Generate the schematic display value for a part.
+
+    Passives use lowercase engineering shorthand (KiCad convention).
+    Proprietary/semi-jellybean parts use their MPN or base_pn.
+    """
+    # Proprietary/semi-jellybean: use MPN or base_pn
+    if isinstance(part, ProprietaryPart):
+        return part.mpn
+    if isinstance(part, SemiJellybeanPart):
+        return part.base_pn
+
+    # Jellybean -- dispatch by category
+    specs = part.specifications
+
+    if part.category == Category.RES:
+        raw = specs.get("resistance", "")
+        if raw:
+            value, _unit = _parse_engineering(raw)
+            return _format_eng_rlc(value, _VALUE_RES_TIERS)
+
+    if part.category == Category.CAP:
+        raw = specs.get("capacitance", "")
+        if raw:
+            return normalise_capacitance(raw)
+
+    if part.category == Category.IND:
+        raw = specs.get("inductance", "")
+        if raw:
+            return normalise_inductance(raw)
+
+    if part.category == Category.DIO and part.subcategory == "LED":
+        colour = specs.get("colour", "")
+        if colour:
+            return colour.upper()
+
+    if part.category == Category.XTAL:
+        raw = specs.get("frequency", "")
+        if raw:
+            return normalise_frequency(raw)
+
+    # Jellybean diode (non-LED): key specs joined with /
+    if part.category == Category.DIO:
+        key_fields = _get_key_specs(part)
+        normalised = []
+        for field in key_fields:
+            raw = specs.get(field, "")
+            if raw:
+                normalised.append(_normalise_spec(field, raw))
+        if normalised:
+            return "/".join(normalised)
+
+    # Fallback
+    return part.name
+
+
+# -- Description generation -------------------------------------------------
+
+
+def generate_description(part: Part) -> str:
+    """
+    Generate a human-readable description for a part.
+
+    For jellybean parts, builds a description from specs and category.
+    For proprietary/semi-jellybean, returns the existing description.
+    """
+    if isinstance(part, (ProprietaryPart, SemiJellybeanPart)):
+        return part.description
+
+    specs = part.specifications
+    pkg = part.package or ""
+
+    if part.category == Category.RES:
+        resistance = specs.get("resistance", "")
+        tolerance = specs.get("tolerance", "")
+        parts = [resistance, tolerance, pkg, "thick film resistor"]
+        return " ".join(p for p in parts if p)
+
+    if part.category == Category.CAP:
+        capacitance = specs.get("capacitance", "")
+        voltage = specs.get("voltage_rating", "")
+        dielectric = specs.get("dielectric", "")
+        subcat_name = _CAP_SUBCAT_NAMES.get(part.subcategory or "", "")
+        parts = [capacitance, voltage, dielectric, pkg]
+        label = f"{subcat_name} capacitor" if subcat_name else "capacitor"
+        return " ".join(p for p in parts if p) + " " + label
+
+    # Generic jellybean: join all key spec values
+    key_fields = _get_key_specs(part)
+    spec_parts = [specs.get(f, "") for f in key_fields]
+    cat_name = _CATEGORY_NAMES.get(part.category, part.category.value)
+    parts = [p for p in spec_parts if p] + [pkg, cat_name]
+    return " ".join(p for p in parts if p)
+
+
+# -- Identity (ADR-001 §7) --------------------------------------------------
+
+
+def get_identity(part: Part) -> tuple[str, ...]:
+    """
+    Return the identity tuple for deduplication.
+
+    Two parts with the same identity tuple are considered the same part.
+    Includes footprint_variant so that e.g. ``RES-10K-1PCT-0603`` and
+    ``RES-10K-1PCT-0603-HS`` remain distinct.
+    """
+    variant = part.footprint_variant or ""
+    pkg = normalise_package(part.package) if part.package else ""
+
+    if isinstance(part, ProprietaryPart):
+        return (part.category.value, part.mpn, pkg, variant)
+
+    if isinstance(part, SemiJellybeanPart):
+        return (part.category.value, part.base_pn, pkg, variant)
+
+    # Jellybean: category + subcategory + normalised key specs + package
+    subcat = (part.subcategory or "").upper()
+    normalised_specs = []
+    for field in _get_key_specs(part):
+        raw = part.specifications.get(field, "")
+        if raw:
+            normalised_specs.append(_normalise_spec(field, raw))
+    return (part.category.value, subcat, *normalised_specs, pkg, variant)
