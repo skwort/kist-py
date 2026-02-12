@@ -78,7 +78,7 @@ def link_library(target: Path, library: Path) -> Path:
     if ref_path.exists():
         raise LibraryExistsError(f"Already linked: {ref_path}")
 
-    rel_path = os.path.relpath(library, target)
+    rel_path = str(os.path.relpath(library, target))
     save_project_ref(ref_path, ProjectRef(library_path=rel_path))
 
     _create_lib_link(target / "lib", rel_path)
