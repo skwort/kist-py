@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.core.config import (
     KIST_MARKER,
     PROJECT_REF,
@@ -17,7 +18,7 @@ from kist.core.config import (
 )
 from kist.core.database import create_empty
 from kist.errors import LibraryExistsError, LibraryNotFoundError
-from kist.models.config import ProjectRef
+from kist.models.config import CategoryDef, ProjectRef
 
 
 def init_library(
@@ -27,6 +28,7 @@ def init_library(
     footprints_dir: str | None = None,
     models_dir: str | None = None,
     blocks_dir: str | None = None,
+    categories: dict[str, CategoryDef] | None = None,
 ) -> Path:
     """
     Create a new kist library at *path*.
@@ -44,6 +46,9 @@ def init_library(
         footprints_dir=footprints_dir,
         models_dir=models_dir,
         blocks_dir=blocks_dir,
+    )
+    config.categories = (
+        categories if categories is not None else dict(WELL_KNOWN_CATEGORIES)
     )
     save_library_config(path, config)
 

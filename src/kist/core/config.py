@@ -59,12 +59,37 @@ def load_library_config(library_root: Path) -> LibraryConfig:
         raise ConfigError(f"Failed to read library config {path}: {exc}") from exc
 
 
+def _strip_category_defaults(data: dict) -> dict:
+    """Remove empty containers and default values from category defs.
+
+    tomlkit can't serialize None, and empty lists/dicts are noise in
+    the TOML output. The default value_field_separator "/" is also
+    stripped to keep config clean.
+    """
+    cats = data.get("categories")
+    if not cats:
+        return data
+    cleaned: dict = {}
+    for code, cat in cats.items():
+        cleaned[code] = {
+            k: v
+            for k, v in cat.items()
+            if v is not None
+            and v != []
+            and v != {}
+            and not (k == "value_field_separator" and v == "/")
+        }
+    data["categories"] = cleaned
+    return data
+
+
 def save_library_config(library_root: Path, config: LibraryConfig) -> None:
     """Write config to .kist/config.toml, creating .kist/ if needed."""
     kist_dir = library_root / KIST_MARKER
     kist_dir.mkdir(parents=True, exist_ok=True)
     path = kist_dir / LIBRARY_CONFIG
-    doc = tomlkit.dumps(config.model_dump())
+    data = _strip_category_defaults(config.model_dump(exclude_none=True))
+    doc = tomlkit.dumps(data)
     path.write_text(doc)
 
 

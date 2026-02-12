@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.core.naming import (
     generate_description,
     generate_name,
@@ -21,14 +22,14 @@ from kist.core.naming import (
     normalise_voltage,
 )
 from kist.models import (
-    Category,
     JellybeanPart,
     Mounting,
     ProprietaryPart,
-    RefDes,
     SemiJellybeanPart,
     Tier,
 )
+
+CATS = WELL_KNOWN_CATEGORIES
 
 # -- normalise_resistance ----------------------------------------------------
 
@@ -255,13 +256,13 @@ def _proprietary_stm32(**overrides: Any) -> ProprietaryPart:
     fields = {
         **_COMMON_FIELDS,
         "tier": Tier.PROPRIETARY,
-        "category": Category.IC,
+        "category": "IC",
         "subcategory": "MCU",
         "package": "LQFP-64",
         "mounting": Mounting.SMD,
         "mpn": "STM32F405RGT6",
         "manufacturer": "STMicroelectronics",
-        "reference": RefDes.U,
+        "reference": "U",
         **overrides,
     }
     return ProprietaryPart(**fields)  # type: ignore[arg-type]
@@ -271,25 +272,25 @@ def _semi_tl072(**overrides: Any) -> SemiJellybeanPart:
     fields = {
         **_COMMON_FIELDS,
         "tier": Tier.SEMI_JELLYBEAN,
-        "category": Category.IC,
+        "category": "IC",
         "subcategory": "OPAMP",
         "package": "SO-8",
         "mounting": Mounting.SMD,
         "base_pn": "TL072",
         "mpn": "TL072CDR",
         "manufacturer": "Texas Instruments",
-        "reference": RefDes.U,
+        "reference": "U",
         **overrides,
     }
     return SemiJellybeanPart(**fields)  # type: ignore[arg-type]
 
 
 def _jellybean(
-    category: Category,
+    category: str,
     subcategory: str | None,
     package: str,
     specs: dict[str, str],
-    reference: RefDes = RefDes.R,
+    reference: str = "R",
     **overrides: Any,
 ) -> JellybeanPart:
     fields = {
@@ -319,7 +320,7 @@ def _jellybean(
         # Jellybean -- passives
         (
             _jellybean(
-                Category.RES,
+                "RES",
                 None,
                 "0603",
                 {"resistance": "10kΩ", "tolerance": "1%"},
@@ -328,123 +329,123 @@ def _jellybean(
         ),
         (
             _jellybean(
-                Category.CAP,
+                "CAP",
                 "CER",
                 "0603",
                 {"capacitance": "100nF", "voltage_rating": "50V", "dielectric": "X7R"},
-                reference=RefDes.C,
+                reference="C",
             ),
             "CAP-CER-100n-50V-X7R-0603",
         ),
         (
             _jellybean(
-                Category.CAP,
+                "CAP",
                 "ELEC",
                 "10x10",
                 {"capacitance": "100µF", "voltage_rating": "25V"},
-                reference=RefDes.C,
+                reference="C",
             ),
             "CAP-ELEC-100u-25V-10X10",
         ),
         (
             _jellybean(
-                Category.IND,
+                "IND",
                 None,
                 "0805",
                 {"inductance": "10µH", "current_rating": "1.2A"},
-                reference=RefDes.L,
+                reference="L",
             ),
             "IND-10u-1200mA-0805",
         ),
         (
             _jellybean(
-                Category.IND,
+                "IND",
                 "FERRITE",
                 "0805",
                 {"impedance_100mhz": "600Ω", "current_rating": "2A"},
-                reference=RefDes.L,
+                reference="L",
             ),
             "IND-FERRITE-600R-2A-0805",
         ),
         # Jellybean -- semiconductors
         (
             _jellybean(
-                Category.DIO,
+                "DIO",
                 "LED",
                 "0603",
                 {"colour": "red"},
-                reference=RefDes.D,
+                reference="D",
             ),
             "DIO-LED-RED-0603",
         ),
         (
             _jellybean(
-                Category.DIO,
+                "DIO",
                 "ZENER",
                 "SOD-323",
                 {"zener_voltage": "3.3V", "power_rating": "500mW"},
-                reference=RefDes.D,
+                reference="D",
             ),
             "DIO-ZENER-3V3-500mW-SOD323",
         ),
         (
             _jellybean(
-                Category.DIO,
+                "DIO",
                 "TVS",
                 "SMA",
                 {"standoff_voltage": "5V", "peak_power": "400W"},
-                reference=RefDes.D,
+                reference="D",
             ),
             "DIO-TVS-5V-400W-SMA",
         ),
         (
             _jellybean(
-                Category.TRAN,
+                "TRAN",
                 "NMOS",
                 "SOT-23",
                 {"vds_max": "30V", "id_max": "5.8A"},
-                reference=RefDes.Q,
+                reference="Q",
             ),
             "TRAN-NMOS-30V-5800mA-SOT23",
         ),
         (
             _jellybean(
-                Category.TRAN,
+                "TRAN",
                 "NPN",
                 "SOT-23",
                 {"vceo": "40V", "ic_max": "200mA"},
-                reference=RefDes.Q,
+                reference="Q",
             ),
             "TRAN-NPN-40V-200mA-SOT23",
         ),
         # Jellybean -- other
         (
             _jellybean(
-                Category.XTAL,
+                "XTAL",
                 None,
                 "HC-49",
                 {"frequency": "8MHz", "load_capacitance": "18pF"},
-                reference=RefDes.Y,
+                reference="Y",
             ),
             "XTAL-8MHz-18p-HC49",
         ),
         (
             _jellybean(
-                Category.FUSE,
+                "FUSE",
                 None,
                 "1206",
                 {"current_rating": "1A", "voltage_rating": "63V"},
-                reference=RefDes.F,
+                reference="F",
             ),
             "FUSE-1A-63V-1206",
         ),
         (
             _jellybean(
-                Category.FUSE,
+                "FUSE",
                 "PTC",
                 "0805",
                 {"hold_current": "500mA", "voltage_rating": "16V"},
-                reference=RefDes.F,
+                reference="F",
             ),
             "FUSE-PTC-500mA-16V-0805",
         ),
@@ -468,18 +469,18 @@ def _jellybean(
     ],
 )
 def test_generate_name(part, expected):
-    assert generate_name(part) == expected
+    assert generate_name(part, CATS) == expected
 
 
 def test_generate_name_footprint_variant():
     part = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
         footprint_variant="HS",
     )
-    assert generate_name(part) == "RES-10K-1PCT-0603-HS"
+    assert generate_name(part, CATS) == "RES-10K-1PCT-0603-HS"
 
 
 # -- generate_value ----------------------------------------------------------
@@ -487,76 +488,76 @@ def test_generate_name_footprint_variant():
 
 def test_generate_value_resistor():
     part = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
-    assert generate_value(part) == "10k"
+    assert generate_value(part, CATS) == "10K"
 
 
 def test_generate_value_capacitor():
     part = _jellybean(
-        Category.CAP,
+        "CAP",
         "CER",
         "0603",
         {"capacitance": "100nF", "voltage_rating": "50V", "dielectric": "X7R"},
-        reference=RefDes.C,
+        reference="C",
     )
-    assert generate_value(part) == "100n"
+    assert generate_value(part, CATS) == "100n"
 
 
 def test_generate_value_inductor():
     part = _jellybean(
-        Category.IND,
+        "IND",
         None,
         "0805",
         {"inductance": "10µH", "current_rating": "1.2A"},
-        reference=RefDes.L,
+        reference="L",
     )
-    assert generate_value(part) == "10u"
+    assert generate_value(part, CATS) == "10u"
 
 
 def test_generate_value_led():
     part = _jellybean(
-        Category.DIO,
+        "DIO",
         "LED",
         "0603",
         {"colour": "red"},
-        reference=RefDes.D,
+        reference="D",
     )
-    assert generate_value(part) == "RED"
+    assert generate_value(part, CATS) == "RED"
 
 
 def test_generate_value_crystal():
     part = _jellybean(
-        Category.XTAL,
+        "XTAL",
         None,
         "HC-49",
         {"frequency": "8MHz", "load_capacitance": "18pF"},
-        reference=RefDes.Y,
+        reference="Y",
     )
-    assert generate_value(part) == "8MHz"
+    assert generate_value(part, CATS) == "8MHz"
 
 
 def test_generate_value_diode_jellybean():
     """Non-LED jellybean diode: key specs joined with /."""
     part = _jellybean(
-        Category.DIO,
+        "DIO",
         "SCHOTTKY",
         "SOD-123",
         {"reverse_voltage": "40V", "forward_current": "1A"},
-        reference=RefDes.D,
+        reference="D",
     )
-    assert generate_value(part) == "40V/1A"
+    assert generate_value(part, CATS) == "40V/1A"
 
 
 def test_generate_value_proprietary():
-    assert generate_value(_proprietary_stm32()) == "STM32F405RGT6"
+    assert generate_value(_proprietary_stm32(), CATS) == "STM32F405RGT6"
 
 
 def test_generate_value_semi_jellybean():
-    assert generate_value(_semi_tl072()) == "TL072"
+    assert generate_value(_semi_tl072(), CATS) == "TL072"
 
 
 # -- generate_description ----------------------------------------------------
@@ -564,38 +565,40 @@ def test_generate_value_semi_jellybean():
 
 def test_generate_description_resistor():
     part = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
-    desc = generate_description(part)
+    desc = generate_description(part, CATS)
     assert "10kΩ" in desc
     assert "1%" in desc
     assert "0603" in desc
+    assert "resistors" in desc
 
 
 def test_generate_description_capacitor():
     part = _jellybean(
-        Category.CAP,
+        "CAP",
         "CER",
         "0603",
         {"capacitance": "100nF", "voltage_rating": "50V", "dielectric": "X7R"},
-        reference=RefDes.C,
+        reference="C",
     )
-    desc = generate_description(part)
+    desc = generate_description(part, CATS)
     assert "100nF" in desc
     assert "ceramic" in desc
+    assert "capacitors" in desc
 
 
 def test_generate_description_proprietary_unchanged():
     part = _proprietary_stm32(description="ARM Cortex-M4 MCU")
-    assert generate_description(part) == "ARM Cortex-M4 MCU"
+    assert generate_description(part, CATS) == "ARM Cortex-M4 MCU"
 
 
 def test_generate_description_semi_jellybean_unchanged():
     part = _semi_tl072(description="Dual JFET-input opamp")
-    assert generate_description(part) == "Dual JFET-input opamp"
+    assert generate_description(part, CATS) == "Dual JFET-input opamp"
 
 
 # -- get_identity ------------------------------------------------------------
@@ -603,79 +606,79 @@ def test_generate_description_semi_jellybean_unchanged():
 
 def test_identity_same_specs():
     a = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
     b = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
-    assert get_identity(a) == get_identity(b)
+    assert get_identity(a, CATS) == get_identity(b, CATS)
 
 
 def test_identity_different_package():
     a = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
     b = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0402",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
-    assert get_identity(a) != get_identity(b)
+    assert get_identity(a, CATS) != get_identity(b, CATS)
 
 
 def test_identity_different_subcategory():
     a = _jellybean(
-        Category.DIO,
+        "DIO",
         None,
         "SOD-123",
         {"reverse_voltage": "40V", "forward_current": "1A"},
-        reference=RefDes.D,
+        reference="D",
     )
     b = _jellybean(
-        Category.DIO,
+        "DIO",
         "SCHOTTKY",
         "SOD-123",
         {"reverse_voltage": "40V", "forward_current": "1A"},
-        reference=RefDes.D,
+        reference="D",
     )
-    assert get_identity(a) != get_identity(b)
+    assert get_identity(a, CATS) != get_identity(b, CATS)
 
 
 def test_identity_footprint_variant():
     a = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
     b = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
         footprint_variant="HS",
     )
-    assert get_identity(a) != get_identity(b)
+    assert get_identity(a, CATS) != get_identity(b, CATS)
 
 
 def test_identity_proprietary_uses_mpn():
-    identity = get_identity(_proprietary_stm32())
+    identity = get_identity(_proprietary_stm32(), CATS)
     assert "STM32F405RGT6" in identity
     assert "IC" in identity
 
 
 def test_identity_semi_jellybean_uses_base_pn():
-    identity = get_identity(_semi_tl072())
+    identity = get_identity(_semi_tl072(), CATS)
     assert "TL072" in identity
     assert "IC" in identity
 
@@ -683,15 +686,15 @@ def test_identity_semi_jellybean_uses_base_pn():
 def test_identity_normalisation():
     """Different input formats for the same value resolve identically."""
     a = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10kΩ", "tolerance": "1%"},
     )
     b = _jellybean(
-        Category.RES,
+        "RES",
         None,
         "0603",
         {"resistance": "10k", "tolerance": "1%"},
     )
-    assert get_identity(a) == get_identity(b)
+    assert get_identity(a, CATS) == get_identity(b, CATS)

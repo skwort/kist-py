@@ -134,6 +134,7 @@ def check() -> None:
     """Validate part names and check for duplicates."""
     from collections import defaultdict
 
+    from kist.core.config import load_library_config
     from kist.core.database import PartsDatabase
     from kist.core.library import find_library
     from kist.core.naming import generate_name, get_identity
@@ -145,6 +146,7 @@ def check() -> None:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from None
 
+    config = load_library_config(library_root)
     db = PartsDatabase(library_root / "parts.json")
     db.load()
     parts = db.list_parts()
@@ -156,10 +158,11 @@ def check() -> None:
     typer.echo(f"Checking {len(parts)} parts...")
 
     issues = 0
+    categories = config.categories
 
     # Check 1: name drift
     for part in parts:
-        expected = generate_name(part)
+        expected = generate_name(part, categories, config.separator)
         if part.name != expected:
             typer.echo(f'  Name mismatch: "{part.name}" should be "{expected}"')
             issues += 1
@@ -167,7 +170,7 @@ def check() -> None:
     # Check 2: identity duplicates
     by_identity: dict[tuple[str, ...], list[str]] = defaultdict(list)
     for part in parts:
-        by_identity[get_identity(part)].append(part.name)
+        by_identity[get_identity(part, categories)].append(part.name)
 
     for identity, names in by_identity.items():
         if len(names) > 1:
