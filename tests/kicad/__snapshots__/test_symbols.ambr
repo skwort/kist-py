@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: test_empty_with_symbol_snapshot
+  '''
+  (kicad_symbol_lib
+  	(version 20241209)
+  	(generator "kist")
+  	(generator_version "1.0")
+  	(symbol "TEST-PART"
+  		(in_bom yes)
+  		(on_board yes)
+  		(property "Reference" "R"
+  			(at 0 0 0)
+  		)
+  		(property "Value" "10k"
+  			(at 0 0 0)
+  		)
+  	)
+  )
+  
+  '''
+# ---
