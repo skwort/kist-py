@@ -40,6 +40,8 @@ class LibraryConfig(BaseModel):
     models_dir: str = "3dmodels"
     blocks_dir: str = "blocks"
     suppliers: list[str] = list(DEFAULT_SUPPLIERS)
+    digikey_locale: str = "US"
+    digikey_currency: str = "USD"
     categories: dict[str, CategoryDef] = {}
 
 

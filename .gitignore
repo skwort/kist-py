@@ -12,3 +12,4 @@ parts.db
 .direnv/
 result
 tmp/
+.env

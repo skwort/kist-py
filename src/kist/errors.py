@@ -27,3 +27,11 @@ class LibraryExistsError(KistError):
 
 class ConfigError(KistError):
     """Raised for corrupt, missing, or invalid configuration files."""
+
+
+class ProviderError(KistError):
+    """Base exception for supplier provider failures."""
+
+
+class DigiKeyError(ProviderError):
+    """Raised when the DigiKey API returns an error or credentials are missing."""
