@@ -2,6 +2,7 @@
 
 from kist.models.config import (
     DEFAULT_SUPPLIERS,
+    CategoryDef,
     GlobalConfig,
     LibraryConfig,
     ProjectRef,
@@ -26,6 +27,7 @@ __all__ = [
     "Alternate",
     "Category",
     "CATEGORY_REFDES",
+    "CategoryDef",
     "DEFAULT_SUPPLIERS",
     "GlobalConfig",
     "Ipn",
