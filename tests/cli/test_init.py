@@ -41,6 +41,14 @@ def test_init_with_dir_overrides(tmp_path):
     assert (tmp_path / "b").is_dir()
 
 
+def test_init_seeds_categories(tmp_path):
+    runner.invoke(app, ["init", "--path", str(tmp_path)])
+    content = (tmp_path / ".kist" / "config.toml").read_text()
+    assert "[categories.RES]" in content
+    assert "[categories.CAP]" in content
+    assert 'library_prefix = "00k"' in content
+
+
 def test_init_already_initialised(tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])

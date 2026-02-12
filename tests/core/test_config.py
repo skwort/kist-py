@@ -95,6 +95,26 @@ def test_library_config_roundtrip(tmp_path):
     assert loaded == cfg
 
 
+def test_library_config_categories_roundtrip(tmp_path):
+    """CategoryDef nested structures survive tomlkit serialization."""
+    from kist.core.categories import WELL_KNOWN_CATEGORIES
+
+    cfg = LibraryConfig(categories=dict(WELL_KNOWN_CATEGORIES))
+    save_library_config(tmp_path, cfg)
+    loaded = load_library_config(tmp_path)
+
+    assert set(loaded.categories.keys()) == set(cfg.categories.keys())
+    # Spot-check a category with subcategory overrides
+    cap = loaded.categories["CAP"]
+    assert cap.name == "Capacitors"
+    assert cap.refdes == "C"
+    assert "CER" in cap.subcategory_key_specs
+    assert "dielectric" in cap.subcategory_key_specs["CER"]
+    assert cap.subcategory_names["CER"] == "Ceramic"
+    assert cap.value_field == "capacitance"
+    assert cap.symbol_template == "capacitor"
+
+
 def test_library_config_creates_kist_dir(tmp_path):
     save_library_config(tmp_path, LibraryConfig())
     assert (tmp_path / ".kist").is_dir()
