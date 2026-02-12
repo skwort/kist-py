@@ -1,0 +1,85 @@
+"""Configuration I/O and resolution."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import platformdirs
+import tomlkit
+import tomlkit.exceptions
+
+from kist.errors import ConfigError
+from kist.models.config import GlobalConfig, LibraryConfig, ProjectRef
+
+KIST_MARKER = ".kist"
+PROJECT_REF = "kist.toml"
+LIBRARY_CONFIG = "config.toml"
+
+
+def _get_config_dir() -> Path:
+    """Return the global config directory, respecting KIST_CONFIG_DIR."""
+    env = os.environ.get("KIST_CONFIG_DIR")
+    if env:
+        return Path(env)
+    return Path(platformdirs.user_config_dir("kist"))
+
+
+def load_global_config() -> GlobalConfig:
+    """Load global config, returning defaults if the file is absent."""
+    path = _get_config_dir() / LIBRARY_CONFIG
+    if not path.exists():
+        return GlobalConfig()
+    try:
+        data = tomlkit.loads(path.read_text())
+        return GlobalConfig.model_validate(dict(data))
+    except (OSError, tomlkit.exceptions.ParseError) as exc:
+        raise ConfigError(f"Failed to read global config {path}: {exc}") from exc
+
+
+def resolve_init_config(**overrides: str | list[str] | None) -> LibraryConfig:
+    """Merge built-in defaults, global config, and CLI overrides."""
+    global_cfg = load_global_config()
+    merged = global_cfg.model_dump()
+    for key, value in overrides.items():
+        if value is not None:
+            merged[key] = value
+    return LibraryConfig.model_validate(merged)
+
+
+def load_library_config(library_root: Path) -> LibraryConfig:
+    """Read .kist/config.toml from a library root."""
+    path = library_root / KIST_MARKER / LIBRARY_CONFIG
+    if not path.exists():
+        raise ConfigError(f"Library config not found: {path}")
+    try:
+        data = tomlkit.loads(path.read_text())
+        return LibraryConfig.model_validate(dict(data))
+    except (OSError, tomlkit.exceptions.ParseError) as exc:
+        raise ConfigError(f"Failed to read library config {path}: {exc}") from exc
+
+
+def save_library_config(library_root: Path, config: LibraryConfig) -> None:
+    """Write config to .kist/config.toml, creating .kist/ if needed."""
+    kist_dir = library_root / KIST_MARKER
+    kist_dir.mkdir(parents=True, exist_ok=True)
+    path = kist_dir / LIBRARY_CONFIG
+    doc = tomlkit.dumps(config.model_dump())
+    path.write_text(doc)
+
+
+def load_project_ref(path: Path) -> ProjectRef:
+    """Read a kist.toml project reference."""
+    if not path.exists():
+        raise ConfigError(f"Project reference not found: {path}")
+    try:
+        data = tomlkit.loads(path.read_text())
+        return ProjectRef.model_validate(dict(data))
+    except (OSError, tomlkit.exceptions.ParseError) as exc:
+        raise ConfigError(f"Failed to read project reference {path}: {exc}") from exc
+
+
+def save_project_ref(path: Path, ref: ProjectRef) -> None:
+    """Write a kist.toml project reference."""
+    doc = tomlkit.dumps(ref.model_dump())
+    path.write_text(doc)

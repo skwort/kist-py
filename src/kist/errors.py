@@ -15,3 +15,15 @@ class DuplicatePartError(KistError):
 
 class DatabaseError(KistError):
     """Raised for JSON database read/write failures."""
+
+
+class LibraryNotFoundError(KistError):
+    """Raised when library discovery exhausts all parent directories."""
+
+
+class LibraryExistsError(KistError):
+    """Raised when initialising or linking in an already-configured directory."""
+
+
+class ConfigError(KistError):
+    """Raised for corrupt, missing, or invalid configuration files."""
