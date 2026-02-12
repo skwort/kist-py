@@ -28,6 +28,9 @@ dependencies = [
 
     # Config paths
     "platformdirs>=4.5.1",
+
+    # TOML (preserves comments and formatting on round-trip)
+    "tomlkit>=0.14.0",
 ]
 
 [project.optional-dependencies]
