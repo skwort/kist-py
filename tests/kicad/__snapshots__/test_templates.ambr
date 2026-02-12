@@ -1,0 +1,254 @@
+# serializer version: 1
+# name: test_capacitor_snapshot
+  '''
+  (symbol "CAP-100N"
+  	(pin_numbers (hide yes))
+  	(pin_names (offset 0.254))
+  	(exclude_from_sim no)
+  	(in_bom yes)
+  	(on_board yes)
+  	(property "Reference" "C"
+  		(at 0.635 2.54 0)
+  		(effects (font (size 1.27 1.27)) (justify left))
+  	)
+  	(property "Value" "100n"
+  		(at 0.635 -2.54 0)
+  		(effects (font (size 1.27 1.27)) (justify left))
+  	)
+  	(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Datasheet" "~"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Description" "10k resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "ki_keywords" "resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(symbol "CAP-100N_0_1"
+  		(polyline
+  			(pts (xy -2.032 0.762) (xy 2.032 0.762))
+  			(stroke (width 0.508) (type default))
+  			(fill (type none))
+  		)
+  		(polyline
+  			(pts (xy -2.032 -0.762) (xy 2.032 -0.762))
+  			(stroke (width 0.508) (type default))
+  			(fill (type none))
+  		)
+  	)
+  	(symbol "CAP-100N_1_1"
+  		(pin passive line
+  			(at 0 3.81 270)
+  			(length 2.794)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "1" (effects (font (size 1.27 1.27))))
+  		)
+  		(pin passive line
+  			(at 0 -3.81 90)
+  			(length 2.794)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "2" (effects (font (size 1.27 1.27))))
+  		)
+  	)
+  )
+  
+  '''
+# ---
+# name: test_inductor_snapshot
+  '''
+  (symbol "IND-10U"
+  	(pin_numbers (hide yes))
+  	(pin_names (offset 1.016) (hide yes))
+  	(exclude_from_sim no)
+  	(in_bom yes)
+  	(on_board yes)
+  	(property "Reference" "L"
+  		(at -1.27 0 90)
+  		(effects (font (size 1.27 1.27)))
+  	)
+  	(property "Value" "10u"
+  		(at 1.905 0 90)
+  		(effects (font (size 1.27 1.27)))
+  	)
+  	(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Datasheet" "~"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Description" "10k resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "ki_keywords" "resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(symbol "IND-10U_0_1"
+  		(arc
+  			(start 0 2.54)
+  			(mid 0.6323 1.905)
+  			(end 0 1.27)
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(arc
+  			(start 0 1.27)
+  			(mid 0.6323 0.635)
+  			(end 0 0)
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(arc
+  			(start 0 0)
+  			(mid 0.6323 -0.635)
+  			(end 0 -1.27)
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(arc
+  			(start 0 -1.27)
+  			(mid 0.6323 -1.905)
+  			(end 0 -2.54)
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  	)
+  	(symbol "IND-10U_1_1"
+  		(pin passive line
+  			(at 0 3.81 270)
+  			(length 1.27)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "1" (effects (font (size 1.27 1.27))))
+  		)
+  		(pin passive line
+  			(at 0 -3.81 90)
+  			(length 1.27)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "2" (effects (font (size 1.27 1.27))))
+  		)
+  	)
+  )
+  
+  '''
+# ---
+# name: test_resistor_snapshot
+  '''
+  (symbol "RES-10K"
+  	(pin_numbers (hide yes))
+  	(pin_names (offset 0))
+  	(exclude_from_sim no)
+  	(in_bom yes)
+  	(on_board yes)
+  	(property "Reference" "R"
+  		(at 2.54 0 90)
+  		(effects (font (size 1.27 1.27)))
+  	)
+  	(property "Value" "10k"
+  		(at -2.54 0 90)
+  		(effects (font (size 1.27 1.27)))
+  	)
+  	(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Datasheet" "~"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Description" "10k resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "ki_keywords" "resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(symbol "RES-10K_0_1"
+  		(polyline
+  			(pts (xy 0 2.286) (xy 0 2.54))
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(polyline
+  			(pts (xy 0 2.286) (xy 1.016 1.905) (xy 0 1.524) (xy -1.016 1.143) (xy 0 0.762))
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(polyline
+  			(pts (xy 0 0.762) (xy 1.016 0.381) (xy 0 0) (xy -1.016 -0.381) (xy 0 -0.762))
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(polyline
+  			(pts (xy 0 -0.762) (xy 1.016 -1.143) (xy 0 -1.524) (xy -1.016 -1.905) (xy 0 -2.286))
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  		(polyline
+  			(pts (xy 0 -2.286) (xy 0 -2.54))
+  			(stroke (width 0) (type default))
+  			(fill (type none))
+  		)
+  	)
+  	(symbol "RES-10K_1_1"
+  		(pin passive line
+  			(at 0 3.81 270)
+  			(length 1.27)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "1" (effects (font (size 1.27 1.27))))
+  		)
+  		(pin passive line
+  			(at 0 -3.81 90)
+  			(length 1.27)
+  			(name "~" (effects (font (size 1.27 1.27))))
+  			(number "2" (effects (font (size 1.27 1.27))))
+  		)
+  	)
+  )
+  
+  '''
+# ---
+# name: test_stub_snapshot
+  '''
+  (symbol "IC-STM32"
+  	(exclude_from_sim no)
+  	(in_bom yes)
+  	(on_board yes)
+  	(property "Reference" "U"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Value" "STM32"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Datasheet" "~"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "Description" "10k resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  	(property "ki_keywords" "resistor"
+  		(at 0 0 0)
+  		(effects (font (size 1.27 1.27)) (hide yes))
+  	)
+  )
+  
+  '''
+# ---
