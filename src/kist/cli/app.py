@@ -92,6 +92,91 @@ def add() -> None:
 
 
 @app.command()
-def search() -> None:
+def search(
+    query: str = typer.Argument(help="Search term."),
+) -> None:
     """Search for parts in the library."""
-    typer.echo("Not yet implemented.")
+    from rich.console import Console
+    from rich.table import Table
+
+    from kist.core.database import PartsDatabase
+    from kist.core.library import find_library
+    from kist.errors import LibraryNotFoundError
+
+    try:
+        library_root = find_library()
+    except LibraryNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from None
+
+    db = PartsDatabase(library_root / "parts.json")
+    db.load()
+    results = db.search(query)
+
+    if not results:
+        typer.echo("No parts found.")
+        raise typer.Exit()
+
+    table = Table(show_header=True)
+    table.add_column("Name")
+    table.add_column("Tier")
+    table.add_column("Category")
+    table.add_column("Description")
+
+    for part in results:
+        table.add_row(part.name, part.tier, part.category, part.description)
+
+    Console().print(table)
+
+
+@app.command()
+def check() -> None:
+    """Validate part names and check for duplicates."""
+    from collections import defaultdict
+
+    from kist.core.database import PartsDatabase
+    from kist.core.library import find_library
+    from kist.core.naming import generate_name, get_identity
+    from kist.errors import LibraryNotFoundError
+
+    try:
+        library_root = find_library()
+    except LibraryNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from None
+
+    db = PartsDatabase(library_root / "parts.json")
+    db.load()
+    parts = db.list_parts()
+
+    if not parts:
+        typer.echo("No parts to check.")
+        raise typer.Exit()
+
+    typer.echo(f"Checking {len(parts)} parts...")
+
+    issues = 0
+
+    # Check 1: name drift
+    for part in parts:
+        expected = generate_name(part)
+        if part.name != expected:
+            typer.echo(f'  Name mismatch: "{part.name}" should be "{expected}"')
+            issues += 1
+
+    # Check 2: identity duplicates
+    by_identity: dict[tuple[str, ...], list[str]] = defaultdict(list)
+    for part in parts:
+        by_identity[get_identity(part)].append(part.name)
+
+    for identity, names in by_identity.items():
+        if len(names) > 1:
+            joined = " and ".join(names)
+            typer.echo(f"  Duplicate identity: {joined} share {identity}")
+            issues += 1
+
+    if issues:
+        typer.echo(f"\n{issues} issue(s) found.")
+        raise typer.Exit(code=1)
+
+    typer.echo("All clean.")
