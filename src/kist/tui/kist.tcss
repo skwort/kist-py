@@ -2,7 +2,43 @@ Screen {
     background: $background;
 }
 
-#placeholder {
+#sidebar {
+    width: 25;
+    height: 1fr;
+    border: none;
+    border-right: tall $panel;
+    background: transparent;
+    padding: 0 1;
+    &:focus {
+        border: none;
+        border-right: tall $panel;
+        background-tint: $foreground 5%;
+    }
+}
+
+#main-panel {
+    width: 1fr;
+    height: 1fr;
+    padding: 0 1 0 0;
+}
+
+#search {
+    dock: top;
+    height: 3;
+    border: tall $panel;
+    background: transparent;
+    margin: 1 1 1 1;
+    padding: 0 1;
+    &:focus {
+        border: tall $border;
+    }
+}
+
+#parts-table {
+    margin: 0 2;
+}
+
+#empty-state {
     width: 100%;
     height: 1fr;
     content-align: center middle;
