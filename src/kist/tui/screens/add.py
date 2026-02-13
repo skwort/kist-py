@@ -5,10 +5,11 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Footer, Label
+from textual.widgets import Footer
 
 from kist import __version__
 from kist.tui.widgets.header import KistHeader
+from kist.tui.widgets.part_form import PartForm
 
 
 class AddScreen(Screen):
@@ -34,8 +35,7 @@ class AddScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield KistHeader(icon="\N{PACKAGE}", page_title="Add Part")
-        text = f"Add part: {self._url_or_mpn}" if self._url_or_mpn else "Add part"
-        yield Label(text, id="placeholder")
+        yield PartForm(mode="editable", id="part-form")
         yield Footer()
 
     def action_save(self) -> None:

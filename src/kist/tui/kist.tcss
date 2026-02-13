@@ -52,3 +52,191 @@ Screen {
 .module-container:focus-within {
     border: round $accent;
 }
+
+/* -- Compact form widgets (Posting-style) --- */
+
+PartForm {
+    & Input {
+        padding: 0 1;
+        height: 1;
+        border: none;
+        &:focus {
+            padding-left: 0;
+            border-left: outer $surface-lighten-1;
+        }
+    }
+    & Select {
+        height: 1;
+        border: none;
+        padding: 0;
+        & SelectCurrent {
+            height: 1;
+            border: none;
+            padding: 0 1;
+        }
+    }
+    & Button {
+        padding: 0 1;
+        height: 1;
+        border: none;
+        min-width: 0;
+    }
+    & Checkbox {
+        height: 1;
+        padding: 0 1;
+        border: none;
+    }
+}
+
+/* -- PartForm layout --- */
+
+.form-field {
+    height: 1;
+    margin: 0 1;
+}
+
+.field-label {
+    width: 16;
+    padding: 0 1 0 0;
+    text-align: right;
+    text-opacity: 70%;
+}
+
+.field-value {
+    width: 1fr;
+}
+
+.field-value-ro {
+    width: 1fr;
+    padding: 0;
+}
+
+.section {
+    border: round $accent 40%;
+    border-title-color: $text-accent 50%;
+    border-title-align: right;
+    height: auto;
+    margin: 1 0 0 0;
+    padding: 0 1;
+    &:focus-within {
+        border: round $accent 100%;
+        border-title-color: $foreground;
+        border-title-style: bold;
+    }
+}
+
+.form-actions {
+    margin: 1 1;
+    height: auto;
+}
+
+.empty-message {
+    width: 1fr;
+    height: 1fr;
+    content-align: center middle;
+    text-opacity: 40%;
+    hatch: right $surface-lighten-1 70%;
+}
+
+.spacer {
+    height: 1;
+}
+
+#notes {
+    height: 1fr;
+}
+
+/* -- PartForm grid: 2x2 layout --- */
+
+#form-top {
+    height: 1fr;
+}
+
+#form-bottom {
+    height: 1fr;
+}
+
+#section-general {
+    width: 1fr;
+    height: 1fr;
+    overflow-y: auto;
+}
+
+#section-supplier {
+    width: 1fr;
+    height: 1fr;
+}
+
+#section-kicad {
+    width: 1fr;
+    height: 1fr;
+}
+
+#section-specs {
+    width: 1fr;
+    height: 1fr;
+}
+
+
+#specs-table {
+    height: auto;
+    width: 1fr;
+    margin: 0 2;
+    &:focus {
+        margin: 0 1 0 0;
+        border-left: inner $accent;
+    }
+}
+
+#specs-actions {
+    dock: bottom;
+    height: 1;
+    & Input {
+        width: 1fr;
+        margin: 0 1;
+    }
+    & Button {
+        background: $accent;
+        color: $text;
+        text-style: none;
+        width: auto;
+        margin: 0 3 0 0;
+        padding: 0 2;
+        &:hover {
+            text-style: bold;
+        }
+    }
+}
+
+/* -- Suppliers table --- */
+
+#suppliers-table {
+    height: auto;
+    width: 1fr;
+    margin: 0 1;
+    &:focus {
+        margin: 0 0 0 0;
+        border-left: inner $accent;
+    }
+}
+
+#suppliers-actions {
+    dock: bottom;
+    height: 1;
+    & Input {
+        width: 1fr;
+        margin: 0 1;
+    }
+    & Button {
+        background: $accent;
+        color: $text;
+        text-style: none;
+        width: auto;
+        margin: 0 1 0 0;
+        padding: 0 2;
+        &:hover {
+            text-style: bold;
+        }
+    }
+}
+

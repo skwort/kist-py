@@ -30,11 +30,11 @@ async def test_add_screen_pushed_on_start():
         assert isinstance(app.screen, AddScreen)
 
 
-async def test_add_screen_shows_url():
+async def test_add_screen_has_part_form():
     app = KistApp(start_screen="add", url_or_mpn="https://example.com")
     async with app.run_test():
-        label = app.screen.query_one("#placeholder")
-        assert "https://example.com" in str(label.render())
+        form = app.screen.query_one("#part-form")
+        assert form is not None
 
 
 async def test_escape_pops_add_screen():
