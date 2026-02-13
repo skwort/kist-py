@@ -45,6 +45,20 @@ class LibraryConfig(BaseModel):
     categories: dict[str, CategoryDef] = {}
 
 
+class DigiKeyProviderConfig(BaseModel):
+    """DigiKey API credentials and settings."""
+
+    enabled: bool = True
+    client_id: str | None = None
+    client_secret: str | None = None
+
+
+class ProvidersConfig(BaseModel):
+    """Per-provider configuration, nested under GlobalConfig."""
+
+    digikey: DigiKeyProviderConfig = DigiKeyProviderConfig()
+
+
 class GlobalConfig(BaseModel):
     """User-level defaults. All fields optional with built-in defaults."""
 
@@ -53,6 +67,7 @@ class GlobalConfig(BaseModel):
     models_dir: str = "3dmodels"
     blocks_dir: str = "blocks"
     suppliers: list[str] = list(DEFAULT_SUPPLIERS)
+    providers: ProvidersConfig = ProvidersConfig()
 
 
 class ProjectRef(BaseModel):
