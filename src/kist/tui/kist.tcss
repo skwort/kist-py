@@ -1,0 +1,18 @@
+Screen {
+    background: $background;
+}
+
+#placeholder {
+    width: 100%;
+    height: 1fr;
+    content-align: center middle;
+    text-opacity: 60%;
+}
+
+.module-container {
+    border: round $panel;
+}
+
+.module-container:focus-within {
+    border: round $accent;
+}

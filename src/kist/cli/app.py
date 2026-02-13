@@ -25,8 +25,9 @@ def main(
         raise typer.Exit()
 
     if ctx.invoked_subcommand is None:
-        # No subcommand — launch TUI
-        typer.echo("TUI not yet implemented. Use --help for CLI commands.")
+        from kist.tui.app import run_tui
+
+        run_tui()
         raise typer.Exit()
 
 
@@ -86,9 +87,13 @@ def link(
 
 
 @app.command()
-def add() -> None:
+def add(
+    url_or_mpn: str | None = typer.Argument(None, help="URL or MPN to fetch."),
+) -> None:
     """Add a part to the library."""
-    typer.echo("Not yet implemented.")
+    from kist.tui.app import run_tui
+
+    run_tui(start_screen="add", url_or_mpn=url_or_mpn)
 
 
 @app.command()
