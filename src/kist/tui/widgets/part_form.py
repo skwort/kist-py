@@ -24,6 +24,7 @@ from kist.models.part import (
     SemiJellybeanPart,
     Tier,
 )
+from kist.providers.models import DigiKeyProduct
 
 # -- Select option lists ---
 
@@ -52,6 +53,29 @@ def _subcategory_options(category: str) -> list[tuple[str, str]]:
     return [
         (f"{code} ({name})", code) for code, name in cat_def.subcategory_names.items()
     ]
+
+
+# -- Provider helpers ---
+
+_MOUNTING_MAP: dict[str, str] = {
+    "surface mount": Mounting.SMD,
+    "through hole": Mounting.THT,
+}
+
+_JELLYBEAN_CATEGORIES = frozenset({"RES", "CAP", "IND", "FUSE", "XTAL"})
+_SEMI_JELLYBEAN_CATEGORIES = frozenset({"DIO", "TRAN"})
+
+# DigiKey parameters already captured as top-level DigiKeyProduct fields
+_PROVIDER_SKIP_PARAMS = frozenset({"Package / Case", "Mounting Type"})
+
+
+def _detect_tier(category: str | None) -> str:
+    """Auto-detect part tier from category code."""
+    if category in _JELLYBEAN_CATEGORIES:
+        return Tier.JELLYBEAN
+    if category in _SEMI_JELLYBEAN_CATEGORIES:
+        return Tier.SEMI_JELLYBEAN
+    return Tier.PROPRIETARY
 
 
 # -- PartForm ---
@@ -511,6 +535,95 @@ class PartForm(Static):
             self.query_one("#datasheet-ro", Label).update(ds_str)
 
         self.query_one("#notes", TextArea).text = part.notes or ""
+
+    def load_from_provider(self, product: DigiKeyProduct) -> None:
+        """
+        Populate form fields from a provider response.
+
+        Auto-detects tier based on category and fills editable fields.
+        Does not construct a Part -- the form IS the editing step.
+        """
+        # Auto-detect tier
+        tier = _detect_tier(product.category)
+        self.query_one("#tier", Select).value = tier
+        self._apply_tier_visibility(tier)
+
+        # Category
+        if product.category:
+            self.query_one("#category", Select).value = product.category
+            self._update_subcategories(product.category)
+
+        # Identity
+        self.query_one("#mpn", Input).value = product.mpn
+        self.query_one("#manufacturer", Input).value = product.manufacturer
+
+        # Physical
+        if product.package:
+            self.query_one("#package", Input).value = product.package
+        if product.mounting:
+            mounting = _MOUNTING_MAP.get(product.mounting.lower())
+            if mounting:
+                self.query_one("#mounting", Select).value = mounting
+
+        # Description
+        self.query_one("#description", Input).value = product.description
+
+        # Specs from parameters (skip fields captured at top level)
+        for key, value in product.parameters.items():
+            if key not in _PROVIDER_SKIP_PARAMS:
+                self._add_spec_to_table(key, value)
+
+        # Supplier: DigiKey
+        dk_url = product.digikey_url or ""
+        self._add_supplier_to_table("DigiKey", product.digikey_pn, dk_url)
+
+        # Datasheet -- DigiKey sometimes returns protocol-relative URLs
+        if product.datasheet_url:
+            ds_url = product.datasheet_url
+            if ds_url.startswith("//"):
+                ds_url = "https:" + ds_url
+            self.query_one("#datasheet", Input).value = ds_url
+
+    def clear(self) -> None:
+        """Reset all form fields to empty/default state."""
+        # Selects
+        for sel_id in ("tier", "category", "subcategory", "mounting"):
+            self.query_one(f"#{sel_id}", Select).value = Select.BLANK
+
+        # Text inputs
+        for inp_id in (
+            "mpn",
+            "manufacturer",
+            "base-pn",
+            "package",
+            "description",
+            "tags",
+            "symbol",
+            "footprint",
+            "keywords",
+            "datasheet",
+            "supplier-name",
+            "supplier-sku",
+            "supplier-url",
+            "spec-key",
+            "spec-value",
+        ):
+            self.query_one(f"#{inp_id}", Input).value = ""
+
+        # Notes
+        self.query_one("#notes", TextArea).text = ""
+
+        # Generated name label
+        self.query_one("#part-name-ro", Label).update("")
+
+        # Tables
+        self.query_one("#specs-table", DataTable).clear()
+        self._update_specs_empty()
+        self.query_one("#suppliers-table", DataTable).clear()
+        self._update_suppliers_empty()
+
+        # Reset tier visibility -- show all fields until tier selected
+        self._apply_tier_visibility(None)
 
     def to_dict(self) -> dict:
         """Extract current form values as a flat dict."""
