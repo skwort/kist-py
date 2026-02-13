@@ -6,6 +6,7 @@ from kist.core.config import (
     load_global_config,
     load_library_config,
     load_project_ref,
+    load_provider_mapping,
     resolve_init_config,
     save_library_config,
     save_project_ref,
@@ -164,3 +165,78 @@ def test_load_project_ref_invalid_raises(tmp_path):
     path.write_text("bad [[[")
     with pytest.raises(ConfigError):
         load_project_ref(path)
+
+
+# --- load_provider_mapping ---
+
+
+def test_provider_mapping_no_toml_returns_defaults():
+    """No config file returns the provider's built-in defaults."""
+    mapping = load_provider_mapping("digikey")
+    assert mapping.supplier_name == "DigiKey"
+    assert "Resistors" in mapping.categories
+    assert "Resistance" in mapping.parameters
+    assert mapping.parameters["Package / Case"] == "package"
+    assert mapping.parameters["Mounting Type"] == "mounting"
+
+
+def test_provider_mapping_merges_overrides(tmp_path, monkeypatch):
+    """User TOML entries overlay defaults; unspecified defaults are kept."""
+    config_dir = tmp_path / "cfg"
+    config_dir.mkdir()
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
+    providers_dir = config_dir / "providers"
+    providers_dir.mkdir()
+    (providers_dir / "digikey.toml").write_text(
+        '[categories]\n"My Custom Category" = "IC"\n'
+    )
+    mapping = load_provider_mapping("digikey")
+    # User override present
+    assert mapping.categories["My Custom Category"] == "IC"
+    # Built-in defaults preserved
+    assert mapping.categories["Resistors"] == "RES"
+
+
+def test_provider_mapping_extends_defaults(tmp_path, monkeypatch):
+    """New entries in TOML are added alongside existing defaults."""
+    config_dir = tmp_path / "cfg"
+    config_dir.mkdir()
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
+    providers_dir = config_dir / "providers"
+    providers_dir.mkdir()
+    (providers_dir / "digikey.toml").write_text(
+        '[parameters]\n"New Param" = "new_param"\n'
+    )
+    mapping = load_provider_mapping("digikey")
+    assert mapping.parameters["New Param"] == "new_param"
+    assert mapping.parameters["Resistance"] == "resistance"
+
+
+def test_provider_mapping_replaces_list_fields(tmp_path, monkeypatch):
+    """List fields in TOML replace the defaults entirely."""
+    config_dir = tmp_path / "cfg"
+    config_dir.mkdir()
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
+    providers_dir = config_dir / "providers"
+    providers_dir.mkdir()
+    (providers_dir / "digikey.toml").write_text(
+        'ignore_parameters = ["Power (Watts)"]\n'
+    )
+    mapping = load_provider_mapping("digikey")
+    assert mapping.ignore_parameters == ["Power (Watts)"]
+
+
+def test_provider_mapping_invalid_toml_raises(tmp_path, monkeypatch):
+    config_dir = tmp_path / "cfg"
+    config_dir.mkdir()
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
+    providers_dir = config_dir / "providers"
+    providers_dir.mkdir()
+    (providers_dir / "digikey.toml").write_text("bad [[[")
+    with pytest.raises(ConfigError):
+        load_provider_mapping("digikey")
+
+
+def test_provider_mapping_unknown_provider_raises():
+    with pytest.raises(ConfigError, match="Unknown provider"):
+        load_provider_mapping("nonexistent")

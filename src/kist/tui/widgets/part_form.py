@@ -24,7 +24,7 @@ from kist.models.part import (
     SemiJellybeanPart,
     Tier,
 )
-from kist.providers.models import DigiKeyProduct
+from kist.providers.models import ProviderProduct
 
 # -- Select option lists ---
 
@@ -57,16 +57,14 @@ def _subcategory_options(category: str) -> list[tuple[str, str]]:
 
 # -- Provider helpers ---
 
-_MOUNTING_MAP: dict[str, str] = {
-    "surface mount": Mounting.SMD,
-    "through hole": Mounting.THT,
+# Normalised mounting values from provider layer --> Mounting enum
+_MOUNTING_LOOKUP: dict[str, str] = {
+    "smd": Mounting.SMD,
+    "tht": Mounting.THT,
 }
 
 _JELLYBEAN_CATEGORIES = frozenset({"RES", "CAP", "IND", "FUSE", "XTAL"})
 _SEMI_JELLYBEAN_CATEGORIES = frozenset({"DIO", "TRAN"})
-
-# DigiKey parameters already captured as top-level DigiKeyProduct fields
-_PROVIDER_SKIP_PARAMS = frozenset({"Package / Case", "Mounting Type"})
 
 
 def _detect_tier(category: str | None) -> str:
@@ -536,7 +534,7 @@ class PartForm(Static):
 
         self.query_one("#notes", TextArea).text = part.notes or ""
 
-    def load_from_provider(self, product: DigiKeyProduct) -> None:
+    def load_from_provider(self, product: ProviderProduct) -> None:
         """
         Populate form fields from a provider response.
 
@@ -561,28 +559,26 @@ class PartForm(Static):
         if product.package:
             self.query_one("#package", Input).value = product.package
         if product.mounting:
-            mounting = _MOUNTING_MAP.get(product.mounting.lower())
-            if mounting:
-                self.query_one("#mounting", Select).value = mounting
+            mounting_enum = _MOUNTING_LOOKUP.get(product.mounting)
+            if mounting_enum:
+                self.query_one("#mounting", Select).value = mounting_enum
 
         # Description
         self.query_one("#description", Input).value = product.description
 
-        # Specs from parameters (skip fields captured at top level)
+        # Specs -- package/mounting already excluded by provider layer
         for key, value in product.parameters.items():
-            if key not in _PROVIDER_SKIP_PARAMS:
-                self._add_spec_to_table(key, value)
+            self._add_spec_to_table(key, value)
 
-        # Supplier: DigiKey
-        dk_url = product.digikey_url or ""
-        self._add_supplier_to_table("DigiKey", product.digikey_pn, dk_url)
+        # Supplier
+        sup_url = product.supplier_url or ""
+        self._add_supplier_to_table(
+            product.supplier_name, product.supplier_sku, sup_url
+        )
 
-        # Datasheet -- DigiKey sometimes returns protocol-relative URLs
+        # Datasheet -- already normalised by provider layer
         if product.datasheet_url:
-            ds_url = product.datasheet_url
-            if ds_url.startswith("//"):
-                ds_url = "https:" + ds_url
-            self.query_one("#datasheet", Input).value = ds_url
+            self.query_one("#datasheet", Input).value = product.datasheet_url
 
     def clear(self) -> None:
         """Reset all form fields to empty/default state."""

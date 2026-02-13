@@ -12,7 +12,7 @@ from textual.widgets import Input, Select
 from kist.core.database import PartsDatabase
 from kist.core.library import init_library
 from kist.models.part import Mounting, ProprietaryPart, Tier
-from kist.providers.models import DigiKeyProduct
+from kist.providers.models import ProviderProduct
 from kist.tui.screens.add import AddScreen
 from kist.tui.widgets.part_form import PartForm
 
@@ -82,41 +82,44 @@ async def test_url_input_populated_from_arg():
 # -- Provider population ---
 
 
-def _make_ic_product() -> DigiKeyProduct:
-    return DigiKeyProduct(
+def _make_ic_product() -> ProviderProduct:
+    return ProviderProduct(
         mpn="STM32F405RGT6",
         manufacturer="STMicroelectronics",
         description="ARM Cortex-M4 MCU",
         detailed_description="ARM Cortex-M4 MCU, 1MB Flash",
-        digikey_pn="497-STM32F405RGT6-ND",
-        digikey_url="https://www.digikey.com/en/products/detail/stm/STM32F405RGT6/123",
+        supplier_name="DigiKey",
+        supplier_sku="497-STM32F405RGT6-ND",
+        supplier_url="https://www.digikey.com/en/products/detail/stm/STM32F405RGT6/123",
         datasheet_url="https://www.st.com/resource/en/datasheet/stm32f405rg.pdf",
         category="IC",
         package="LQFP-64",
-        mounting="Surface Mount",
+        mounting="smd",
         parameters={"frequency": "168MHz", "flash": "1MB"},
     )
 
 
-def _make_resistor_product() -> DigiKeyProduct:
-    return DigiKeyProduct(
+def _make_resistor_product() -> ProviderProduct:
+    return ProviderProduct(
         mpn="RC0603FR-0710KL",
         manufacturer="Yageo",
         description="10 kOhms 1% 0.1W Chip Resistor",
         detailed_description="",
-        digikey_pn="311-10.0KHRCT-ND",
+        supplier_name="DigiKey",
+        supplier_sku="311-10.0KHRCT-ND",
         category="RES",
         parameters={"resistance": "10 kOhms", "tolerance": "1%"},
     )
 
 
-def _make_diode_product() -> DigiKeyProduct:
-    return DigiKeyProduct(
+def _make_diode_product() -> ProviderProduct:
+    return ProviderProduct(
         mpn="1N4148W-7-F",
         manufacturer="Diodes Incorporated",
         description="Diode Standard 100V 300mA",
         detailed_description="",
-        digikey_pn="1N4148W-FDICT-ND",
+        supplier_name="DigiKey",
+        supplier_sku="1N4148W-FDICT-ND",
         category="DIO",
         parameters={},
     )
@@ -149,7 +152,7 @@ async def test_load_from_provider_adds_supplier(app):
         form.load_from_provider(product)
 
         d = form.to_dict()
-        assert "DigiKey" in d["suppliers"]
+        assert product.supplier_name in d["suppliers"]
         assert d["suppliers"]["DigiKey"]["sku"] == "497-STM32F405RGT6-ND"
 
 

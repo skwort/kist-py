@@ -26,7 +26,7 @@ from kist.models.part import (
     Tier,
 )
 from kist.providers.digikey import DigiKeyClient, parse_digikey_url
-from kist.providers.models import DigiKeyProduct
+from kist.providers.models import ProviderProduct
 from kist.tui.widgets.header import KistHeader
 from kist.tui.widgets.part_form import PartForm
 
@@ -111,7 +111,7 @@ class AddScreen(Screen):
             form = self.query_one("#part-form", PartForm)
             form.load_from_provider(product)
 
-    def _fetch_product(self) -> DigiKeyProduct:
+    def _fetch_product(self) -> ProviderProduct:
         """Blocking: parse URL/MPN, load credentials, call DigiKey API."""
         assert self._url_or_mpn is not None  # set by _start_fetch before worker
         product_number = parse_digikey_url(self._url_or_mpn)

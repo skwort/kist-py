@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import httpx
 
 from kist.errors import DigiKeyError
-from kist.providers.models import DigiKeyProduct
+from kist.providers.models import ProviderMappingConfig, ProviderProduct
 
 # -- URLs -------------------------------------------------------------------
 
@@ -17,10 +17,21 @@ SANDBOX_URL = "https://sandbox-api.digikey.com"
 REQUEST_TIMEOUT = 30  # seconds
 
 # -- Parameter mapping ------------------------------------------------------
-# Maps DigiKey ParameterText names to kist spec field names.
-# Parameters not in this map are preserved as-is in DigiKeyProduct.parameters.
+# Maps raw DigiKey ParameterText names to normalised target names.
+#
+# The target name determines how the parameter is routed:
+#   "package"      --> ProviderProduct.package  (top-level field)
+#   "mounting"     --> ProviderProduct.mounting  (top-level field)
+#   in ignore list --> dropped
+#   anything else  --> ProviderProduct.parameters[target]
+#
+# Parameters not in this map pass through with their raw name.
 
 PARAMETER_MAP: dict[str, str] = {
+    # Extracted to top-level fields
+    "Package / Case": "package",
+    "Mounting Type": "mounting",
+    # Spec parameters
     "Resistance": "resistance",
     "Tolerance": "tolerance",
     "Capacitance": "capacitance",
@@ -86,9 +97,27 @@ CATEGORY_MAP: dict[str, str] = {
     "Transformers": "TFRM",
 }
 
-# Parameter names that map to top-level DigiKeyProduct fields
-_PACKAGE_PARAMS = {"Package / Case"}
-_MOUNTING_PARAMS = {"Mounting Type"}
+# -- Mounting value normalisation -------------------------------------------
+# Maps raw DigiKey mounting strings to canonical values.
+
+MOUNTING_MAP: dict[str, str] = {
+    "Surface Mount": "smd",
+    "Through Hole": "tht",
+}
+
+# Target names that route to top-level ProviderProduct fields
+# instead of the parameters dict.
+_EXTRACT_FIELDS = frozenset({"package", "mounting"})
+
+
+def default_mapping() -> ProviderMappingConfig:
+    """Return built-in DigiKey mapping defaults."""
+    return ProviderMappingConfig(
+        supplier_name="DigiKey",
+        categories=dict(CATEGORY_MAP),
+        parameters=dict(PARAMETER_MAP),
+        mounting=dict(MOUNTING_MAP),
+    )
 
 
 # -- URL parsing -------------------------------------------------------------
@@ -118,64 +147,90 @@ def parse_digikey_url(url: str) -> str:
 # -- Response mapping --------------------------------------------------------
 
 
-def _find_category(category_node: dict | None) -> str | None:
+def _find_category(
+    category_node: dict | None, categories: dict[str, str]
+) -> str | None:
     """Walk the category tree and return the first kist category match."""
     if not category_node:
         return None
     name = category_node.get("Name", "")
-    if name in CATEGORY_MAP:
-        return CATEGORY_MAP[name]
+    if name in categories:
+        return categories[name]
     # Check children -- DigiKey nests subcategories under the parent
     for child in category_node.get("ChildCategories", []):
         child_name = child.get("Name", "")
-        if child_name in CATEGORY_MAP:
-            return CATEGORY_MAP[child_name]
+        if child_name in categories:
+            return categories[child_name]
     return None
 
 
-def _map_product(data: dict, digikey_pn: str) -> DigiKeyProduct:
-    """Map a raw Product dict from the DigiKey API to DigiKeyProduct."""
+def _map_product(
+    data: dict,
+    product_number: str,
+    mapping: ProviderMappingConfig,
+) -> ProviderProduct:
+    """Map a raw Product dict from the DigiKey API to ProviderProduct."""
     product = data.get("Product", data)
 
     description_obj = product.get("Description", {})
     manufacturer_obj = product.get("Manufacturer", {})
 
-    # Build parameters dict, extracting package and mounting
+    ignore = set(mapping.ignore_parameters)
+
+    # Pipeline: normalise parameter names, then route.
+    #   "package"      --> product.package
+    #   "mounting"     --> product.mounting (value normalised via mapping.mounting)
+    #   in ignore set  --> dropped
+    #   anything else  --> product.parameters[target]
     parameters: dict[str, str] = {}
     package: str | None = None
     mounting: str | None = None
 
     for param in product.get("Parameters", []):
-        param_text = param.get("ParameterText", "")
-        value_text = param.get("ValueText", "")
-        if not param_text or not value_text:
+        raw_name = param.get("ParameterText", "")
+        value = param.get("ValueText", "")
+        if not raw_name or not value:
             continue
 
-        if param_text in _PACKAGE_PARAMS:
-            package = value_text
-        elif param_text in _MOUNTING_PARAMS:
-            mounting = value_text
+        # 1. Normalise name
+        target = mapping.parameters.get(raw_name, raw_name)
 
-        # Map to kist spec name if known, otherwise keep original
-        key = PARAMETER_MAP.get(param_text, param_text)
-        parameters[key] = value_text
+        # 2. Route
+        if target == "package":
+            package = value
+        elif target == "mounting":
+            mounting = value
+        elif target in ignore:
+            continue
+        else:
+            parameters[target] = value
+
+    # Normalise mounting value
+    if mounting:
+        mounting = mapping.mounting.get(mounting)
 
     # Get first variation's DigiKey part number if we don't have one
-    dk_pn = digikey_pn
+    dk_pn = product_number
     variations = product.get("ProductVariations", [])
     if variations:
         dk_pn = variations[0].get("DigiKeyProductNumber", dk_pn)
 
-    category = _find_category(product.get("Category"))
+    category = _find_category(product.get("Category"), mapping.categories)
 
-    return DigiKeyProduct(
+    # Normalise protocol-relative datasheet URLs
+    datasheet_url = product.get("DatasheetUrl")
+    if datasheet_url and datasheet_url.startswith("//"):
+        datasheet_url = "https:" + datasheet_url
+
+    return ProviderProduct(
         mpn=product.get("ManufacturerProductNumber", ""),
         manufacturer=manufacturer_obj.get("Name", ""),
         description=description_obj.get("ProductDescription", ""),
         detailed_description=description_obj.get("DetailedDescription", ""),
-        digikey_pn=dk_pn,
-        digikey_url=product.get("ProductUrl"),
-        datasheet_url=product.get("DatasheetUrl"),
+        supplier_name=mapping.supplier_name,
+        supplier_sku=dk_pn,
+        supplier_url=product.get("ProductUrl"),
+        datasheet_url=datasheet_url,
         category=category,
         parameters=parameters,
         unit_price=product.get("UnitPrice"),
@@ -238,12 +293,19 @@ class DigiKeyClient:
         self._token = access_token
         return access_token
 
-    def fetch_product(self, product_number: str) -> DigiKeyProduct:
+    def fetch_product(
+        self,
+        product_number: str,
+        mapping: ProviderMappingConfig | None = None,
+    ) -> ProviderProduct:
         """
         Fetch product details from the DigiKey v4 API.
 
         Token is obtained lazily and reused across calls.
         """
+        if mapping is None:
+            mapping = default_mapping()
+
         token = self._ensure_token()
 
         resp = httpx.get(
@@ -262,4 +324,4 @@ class DigiKeyClient:
                 f"Product details request failed ({resp.status_code}): {resp.text}"
             )
 
-        return _map_product(resp.json(), product_number)
+        return _map_product(resp.json(), product_number, mapping)

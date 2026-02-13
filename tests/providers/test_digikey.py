@@ -7,8 +7,10 @@ from kist.providers.digikey import (
     CATEGORY_MAP,
     PARAMETER_MAP,
     _map_product,
+    default_mapping,
     parse_digikey_url,
 )
+from kist.providers.models import ProviderMappingConfig
 
 # -- parse_digikey_url -------------------------------------------------------
 
@@ -46,6 +48,8 @@ def test_parse_empty_path_raises():
 
 
 # -- _map_product ------------------------------------------------------------
+
+_DEFAULT = default_mapping()
 
 # Minimal API response structure matching DigiKey v4 ProductDetails
 SAMPLE_RESPONSE = {
@@ -107,57 +111,62 @@ SAMPLE_RESPONSE = {
 
 
 def test_map_basic_fields():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.mpn == "RC0603FR-0710KL"
     assert result.manufacturer == "Yageo"
     assert result.description == "RES 10K OHM 1% 1/10W 0603"
     assert "10 kOhms" in result.detailed_description
 
 
-def test_map_digikey_pn_from_variation():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
-    assert result.digikey_pn == "311-10.0KHRCT-ND"
+def test_map_supplier_sku_from_variation():
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert result.supplier_sku == "311-10.0KHRCT-ND"
+
+
+def test_map_supplier_name():
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert result.supplier_name == "DigiKey"
 
 
 def test_map_urls():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
-    assert result.digikey_url is not None
-    assert "digikey.com" in result.digikey_url
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert result.supplier_url is not None
+    assert "digikey.com" in result.supplier_url
     assert result.datasheet_url is not None
     assert "yageo.com" in result.datasheet_url
 
 
 def test_map_pricing_and_stock():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.unit_price == 0.10
     assert result.quantity_available == 28890000
 
 
 def test_map_category():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.category == "RES"
 
 
 def test_map_package_extracted():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.package == "0603 (1608 Metric)"
 
 
-def test_map_mounting_extracted():
-    result = _map_product(SAMPLE_RESPONSE, "726835")
-    assert result.mounting == "Surface Mount"
+def test_map_mounting_normalised():
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert result.mounting == "smd"
 
 
 def test_map_parameters_renamed():
     """Known parameters should be renamed to kist spec names."""
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.parameters["resistance"] == "10 kOhms"
     assert result.parameters["tolerance"] == "\u00b11%"
 
 
 def test_map_unknown_parameters_preserved():
     """Parameters not in PARAMETER_MAP keep their original name."""
-    result = _map_product(SAMPLE_RESPONSE, "726835")
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert result.parameters["Power (Watts)"] == "0.1W, 1/10W"
 
 
@@ -169,8 +178,8 @@ def test_map_no_variations_keeps_input_pn():
             "ProductVariations": [],
         }
     }
-    result = _map_product(data, "726835")
-    assert result.digikey_pn == "726835"
+    result = _map_product(data, "726835", _DEFAULT)
+    assert result.supplier_sku == "726835"
 
 
 def test_map_unknown_category_returns_none():
@@ -183,7 +192,7 @@ def test_map_unknown_category_returns_none():
             },
         }
     }
-    result = _map_product(data, "726835")
+    result = _map_product(data, "726835", _DEFAULT)
     assert result.category is None
 
 
@@ -199,7 +208,7 @@ def test_map_missing_optional_fields():
             },
         }
     }
-    result = _map_product(data, "TEST-123")
+    result = _map_product(data, "TEST-123", _DEFAULT)
     assert result.mpn == "TEST-123"
     assert result.unit_price is None
     assert result.quantity_available is None
@@ -207,6 +216,65 @@ def test_map_missing_optional_fields():
     assert result.mounting is None
     assert result.parameters == {}
     assert result.category is None
+
+
+def test_map_extracted_params_excluded():
+    """Package and mounting are routed to top-level fields, not parameters."""
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert "package" not in result.parameters
+    assert "mounting" not in result.parameters
+    # Raw names should also be absent (they were normalised first)
+    assert "Package / Case" not in result.parameters
+    assert "Mounting Type" not in result.parameters
+
+
+def test_map_ignored_params_excluded():
+    """Parameters in ignore_parameters are dropped entirely."""
+    custom = ProviderMappingConfig(
+        supplier_name="DigiKey",
+        categories=dict(CATEGORY_MAP),
+        parameters=dict(PARAMETER_MAP),
+        ignore_parameters=["resistance"],
+        mounting={"Surface Mount": "smd"},
+    )
+    result = _map_product(SAMPLE_RESPONSE, "726835", custom)
+    assert "resistance" not in result.parameters
+
+
+def test_map_custom_category_mapping():
+    """Custom mapping overrides change how categories are resolved."""
+    custom = ProviderMappingConfig(
+        supplier_name="DigiKey",
+        categories={"Resistors": "CUSTOM"},
+        parameters=dict(PARAMETER_MAP),
+        mounting={"Surface Mount": "smd"},
+    )
+    result = _map_product(SAMPLE_RESPONSE, "726835", custom)
+    assert result.category == "CUSTOM"
+
+
+def test_map_unknown_mounting_returns_none():
+    """Mounting values not in the mapping produce None."""
+    custom = ProviderMappingConfig(
+        supplier_name="DigiKey",
+        categories=dict(CATEGORY_MAP),
+        parameters=dict(PARAMETER_MAP),
+        mounting={},  # empty -- no normalisation
+    )
+    result = _map_product(SAMPLE_RESPONSE, "726835", custom)
+    assert result.mounting is None
+
+
+def test_map_protocol_relative_datasheet():
+    """Protocol-relative datasheet URLs get https: prefix."""
+    data = {
+        "Product": {
+            **SAMPLE_RESPONSE["Product"],
+            "DatasheetUrl": "//www.yageo.com/datasheet.pdf",
+        }
+    }
+    result = _map_product(data, "726835", _DEFAULT)
+    assert result.datasheet_url == "https://www.yageo.com/datasheet.pdf"
 
 
 # -- Mapping dicts -----------------------------------------------------------

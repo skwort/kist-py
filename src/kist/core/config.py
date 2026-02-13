@@ -11,6 +11,7 @@ import tomlkit.exceptions
 
 from kist.errors import ConfigError
 from kist.models.config import GlobalConfig, LibraryConfig, ProjectRef
+from kist.providers.models import ProviderMappingConfig
 
 KIST_MARKER = ".kist"
 PROJECT_REF = "kist.toml"
@@ -108,3 +109,53 @@ def save_project_ref(path: Path, ref: ProjectRef) -> None:
     """Write a kist.toml project reference."""
     doc = tomlkit.dumps(ref.model_dump())
     path.write_text(doc)
+
+
+# -- Provider mapping config ------------------------------------------------
+
+# Lazy import to avoid circular deps at module level
+_PROVIDER_DEFAULTS: dict[str, str] = {
+    "digikey": "kist.providers.digikey",
+}
+
+
+def load_provider_mapping(provider_name: str) -> ProviderMappingConfig:
+    """
+    Load mapping config for a provider, merging user TOML over defaults.
+
+    If no TOML file exists, returns the provider's built-in defaults.
+    Dict fields (categories, parameters, mounting) are merged key-by-key.
+    List fields (ignore_parameters) and scalars are replaced entirely
+    if present in the TOML.
+    """
+    # Load built-in defaults from the provider module
+    module_path = _PROVIDER_DEFAULTS.get(provider_name)
+    if module_path is None:
+        raise ConfigError(f"Unknown provider: {provider_name}")
+
+    import importlib
+
+    mod = importlib.import_module(module_path)
+    defaults: ProviderMappingConfig = mod.default_mapping()
+
+    # Check for user overrides
+    toml_path = _get_config_dir() / "providers" / f"{provider_name}.toml"
+    if not toml_path.exists():
+        return defaults
+
+    try:
+        user_data = dict(tomlkit.loads(toml_path.read_text()))
+    except (OSError, tomlkit.exceptions.ParseError) as exc:
+        raise ConfigError(f"Failed to read provider config {toml_path}: {exc}") from exc
+
+    # Merge: dicts overlay key-by-key, lists/scalars replace
+    merged = defaults.model_dump()
+    for key, value in user_data.items():
+        if key not in merged:
+            continue  # ignore unknown keys
+        if isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+
+    return ProviderMappingConfig.model_validate(merged)
