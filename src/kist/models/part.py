@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Literal, NewType
 
-from pydantic import BaseModel, ConfigDict, Discriminator, HttpUrl
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, HttpUrl
 
 Ipn = NewType("Ipn", str)
 
@@ -39,6 +39,7 @@ class PartBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    ipn: Ipn | None = Field(default=None, exclude=True)
     name: str
     description: str
     category: str

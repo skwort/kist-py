@@ -104,6 +104,33 @@ def test_resolve_missing_returns_none(db: PartsDatabase):
     assert db.resolve("DOES-NOT-EXIST") is None
 
 
+# -- ipn on parts ------------------------------------------------------------
+
+
+def test_ipn_set_on_load(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    """Parts carry their own IPN after load."""
+    ipn = db.add(proprietary_part)
+
+    db2 = PartsDatabase(db.path)
+    db2.load()
+    part = db2.get(ipn)
+    assert part is not None
+    assert part.ipn == ipn
+
+
+def test_ipn_set_on_add(db: PartsDatabase, proprietary_part: ProprietaryPart):
+    """add() sets ipn on the part object."""
+    ipn = db.add(proprietary_part)
+    assert proprietary_part.ipn == ipn
+
+
+def test_ipn_excluded_from_serialization(proprietary_part: ProprietaryPart):
+    """ipn is excluded from model_dump so it doesn't duplicate the dict key."""
+    proprietary_part.ipn = Ipn("test-id")
+    data = proprietary_part.model_dump(mode="json")
+    assert "ipn" not in data
+
+
 # -- list_parts --------------------------------------------------------------
 
 

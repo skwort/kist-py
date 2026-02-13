@@ -56,7 +56,9 @@ class PartsDatabase:
 
         parts: dict[Ipn, Part] = {}
         for uid, part_data in raw.get("parts", {}).items():
-            parts[Ipn(uid)] = _part_adapter.validate_python(part_data)
+            part = _part_adapter.validate_python(part_data)
+            part.ipn = Ipn(uid)
+            parts[Ipn(uid)] = part
 
         self._parts = parts
         self._name_index = {part.name: uid for uid, part in parts.items()}
@@ -91,6 +93,7 @@ class PartsDatabase:
             raise DuplicatePartError(f"Part name already exists: {part.name}")
 
         ipn = Ipn(str(uuid.uuid4()))
+        part.ipn = ipn
         self._parts[ipn] = part
         self._name_index[part.name] = ipn
         self.save()
