@@ -23,6 +23,9 @@ dependencies = [
     # HTTP (supplier APIs)
     "httpx>=0.28.1",
 
+    # TUI
+    "textual>=7.0.0",
+
     # Logging
     "structlog>=25.5.0",
 
