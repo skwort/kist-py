@@ -15,16 +15,9 @@ from textual.widgets import Footer, Input, Label
 from kist import __version__
 from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
-from kist.core.naming import generate_description, generate_name, generate_value
 from kist.errors import DuplicatePartError, ProviderError
-from kist.models.part import (
-    JellybeanPart,
-    ProprietaryPart,
-    SemiJellybeanPart,
-    SupplierInfo,
-    Tier,
-)
 from kist.providers import detect_provider, fetch_product
+from kist.tui.save import ValidationNotice, build_part_from_form
 from kist.tui.widgets.header import KistHeader
 from kist.tui.widgets.part_form import PartForm
 
@@ -118,16 +111,6 @@ class AddScreen(Screen):
         form = self.query_one("#part-form", PartForm)
         d = form.to_dict()
 
-        tier = d.get("tier")
-        if not tier:
-            self.notify("Tier is required", severity="error")
-            return
-
-        category = d.get("category")
-        if not category:
-            self.notify("Category is required", severity="error")
-            return
-
         app: KistApp = self.app  # type: ignore[assignment]
         library_path = app.library_path
         if not library_path:
@@ -135,45 +118,10 @@ class AddScreen(Screen):
             return
 
         config = load_library_config(library_path)
-        categories = config.categories
-
-        # Build SupplierInfo objects from flat dicts
-        suppliers = {
-            name: SupplierInfo(sku=info["sku"], url=info.get("url"))
-            for name, info in d.get("suppliers", {}).items()
-        }
-
-        cat_def = categories.get(category)
-        reference = cat_def.refdes if cat_def else "U"
-
-        # Normalise protocol-relative datasheet URLs
-        datasheet = d.get("datasheet")
-        if datasheet and datasheet.startswith("//"):
-            datasheet = "https:" + datasheet
-
-        # Fields shared by all tiers; name/value filled after generation
-        common = {
-            "name": "",
-            "value": "",
-            "reference": reference,
-            "category": category,
-            "subcategory": d.get("subcategory"),
-            "package": d.get("package") or None,
-            "mounting": d.get("mounting"),
-            "description": d.get("description", ""),
-            "tags": d.get("tags", []),
-            "specifications": d.get("specifications"),
-            "suppliers": suppliers,
-            "symbol": d.get("symbol", ""),
-            "footprint": d.get("footprint", ""),
-            "keywords": d.get("keywords", []),
-            "datasheet": datasheet,
-            "notes": d.get("notes"),
-        }
 
         try:
-            part = self._build_part(tier, d, common)
-        except _ValidationNotice as exc:
+            part = build_part_from_form(d, config.categories, config.separator)
+        except ValidationNotice as exc:
             self.notify(str(exc), severity="error")
             return
         except Exception as exc:
@@ -181,12 +129,6 @@ class AddScreen(Screen):
             msg = str(exc).replace("[", "\\[")
             self.notify(f"Invalid part data: {msg}", severity="error")
             return
-
-        # Generate name, value, description
-        part.name = generate_name(part, categories, config.separator)
-        part.value = generate_value(part, categories)
-        if isinstance(part, JellybeanPart):
-            part.description = generate_description(part, categories)
 
         # Persist
         db = PartsDatabase(library_path / "parts.json")
@@ -203,55 +145,5 @@ class AddScreen(Screen):
         url_input.value = ""
         url_input.focus()
 
-    @staticmethod
-    def _build_part(
-        tier: str,
-        d: dict,
-        common: dict,
-    ) -> ProprietaryPart | SemiJellybeanPart | JellybeanPart:
-        """Construct the tier-appropriate Part subclass from form data."""
-        if tier == Tier.PROPRIETARY:
-            mpn = d.get("mpn", "").strip()
-            manufacturer = d.get("manufacturer", "").strip()
-            if not mpn:
-                raise _ValidationNotice("MPN is required for proprietary parts")
-            if not manufacturer:
-                raise _ValidationNotice("Manufacturer is required")
-            return ProprietaryPart(
-                tier=Tier.PROPRIETARY,
-                mpn=mpn,
-                manufacturer=manufacturer,
-                **common,
-            )
-
-        if tier == Tier.SEMI_JELLYBEAN:
-            mpn = d.get("mpn", "").strip()
-            manufacturer = d.get("manufacturer", "").strip()
-            base_pn = d.get("base_pn", "").strip()
-            if not mpn:
-                raise _ValidationNotice("MPN is required")
-            if not manufacturer:
-                raise _ValidationNotice("Manufacturer is required")
-            if not base_pn:
-                raise _ValidationNotice("Base PN is required for semi-jellybean parts")
-            return SemiJellybeanPart(
-                tier=Tier.SEMI_JELLYBEAN,
-                mpn=mpn,
-                manufacturer=manufacturer,
-                base_pn=base_pn,
-                **common,
-            )
-
-        # Jellybean
-        specs = d.get("specifications")
-        if not specs:
-            raise _ValidationNotice("Specs are required for jellybean parts")
-        common["specifications"] = specs
-        return JellybeanPart(tier=Tier.JELLYBEAN, **common)
-
     def action_pop_screen(self) -> None:
         self.app.pop_screen()
-
-
-class _ValidationNotice(Exception):
-    """Internal: carries a user-facing validation message."""
