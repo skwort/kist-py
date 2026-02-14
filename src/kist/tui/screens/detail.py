@@ -125,7 +125,7 @@ class DetailModal(ModalScreen[bool]):
         self.app.push_screen(
             ConfirmModal(f"Delete {self._part.name}?"),
             callback=self._on_delete_confirmed,
-        )  # type: ignore[arg-type]
+        )
 
     def _on_delete_confirmed(self, confirmed: bool | None) -> None:
         if not confirmed:
@@ -151,7 +151,7 @@ class DetailModal(ModalScreen[bool]):
                 self.app.push_screen(
                     ConfirmModal("Discard unsaved changes?"),
                     callback=self._on_discard_confirmed,
-                )  # type: ignore[arg-type]
+                )
             else:
                 self._switch_to_readonly()
             return

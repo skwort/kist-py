@@ -175,7 +175,7 @@ class BrowseScreen(Screen):
             self.app.push_screen(
                 DetailModal(part),
                 callback=self._on_detail_closed,
-            )  # type: ignore[arg-type]
+            )
 
     def _on_detail_closed(self, changed: bool | None) -> None:
         app: KistApp = self.app  # type: ignore[assignment]

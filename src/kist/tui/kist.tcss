@@ -273,6 +273,46 @@ PartForm {
     }
 }
 
+/* -- Check modal --- */
+
+LibraryCheckModal {
+    align: center middle;
+}
+
+#check-container {
+    width: 80%;
+    max-width: 90;
+    max-height: 80%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $surface;
+    padding: 1 2;
+}
+
+#check-header {
+    width: 1fr;
+    text-style: bold;
+    margin: 0 0 1 0;
+}
+
+#check-results {
+    height: auto;
+    max-height: 100%;
+}
+
+.check-kind {
+    color: $warning;
+    padding: 0 0 0 2;
+}
+
+.check-detail {
+    padding: 0 0 0 4;
+    margin: 0 0 1 0;
+    text-opacity: 80%;
+    text-overflow: fold;
+}
+
 /* -- Detail modal --- */
 
 DetailModal {
