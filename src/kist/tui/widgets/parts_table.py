@@ -27,6 +27,7 @@ class PartsTable(DataTable):
     BINDINGS = [
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
+        Binding("e", "select_cursor", "Edit"),
     ]
 
     def on_mount(self) -> None:

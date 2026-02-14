@@ -31,7 +31,7 @@ EMPTY_LIBRARY_TEXT = (
     "\N{PACKAGE} Your library is empty.\n\n"
     "Add your first part:\n"
     "  [bold]kist add <url>[/bold]\n"
-    "  [bold]ctrl+p[/bold] --> Add part"
+    "  [bold]ctrl+n[/bold] -- New part"
 )
 
 
@@ -46,6 +46,7 @@ class BrowseScreen(Screen):
     BINDINGS = [
         Binding("q", "app.quit", "Quit"),
         Binding("slash", "focus_search", "Search", key_display="/"),
+        Binding("ctrl+n", "new_part", "New part"),
     ]
 
     def __init__(
@@ -182,6 +183,12 @@ class BrowseScreen(Screen):
 
     def action_focus_search(self) -> None:
         self.query_one("#search", Input).focus()
+
+    def action_new_part(self) -> None:
+        """Open the add-part screen."""
+        from kist.tui.screens.add import AddScreen
+
+        self.app.push_screen(AddScreen())
 
     def on_key(self, event) -> None:
         """Clear search and refocus table on Escape from search input."""
