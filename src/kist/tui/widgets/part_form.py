@@ -89,9 +89,12 @@ class PartForm(Static):
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
-        super().__init__(name=name, id=id, classes=classes)
+        extra = "-readonly" if mode == "readonly" else ""
+        cls = f"{classes} {extra}".strip() if classes else extra
+        super().__init__(name=name, id=id, classes=cls or None)
         self._mode: Literal["editable", "readonly"] = mode
         self._categories = categories or WELL_KNOWN_CATEGORIES
+        self._has_toggled = False
 
     @property
     def mode(self) -> Literal["editable", "readonly"]:
@@ -100,6 +103,10 @@ class PartForm(Static):
     @mode.setter
     def mode(self, value: Literal["editable", "readonly"]) -> None:
         self._mode = value
+        if value == "readonly":
+            self.add_class("-readonly")
+        else:
+            self.remove_class("-readonly")
         if self.is_mounted:
             self._apply_mode()
 
@@ -332,11 +339,15 @@ class PartForm(Static):
         self.query_one("#specs-table", DataTable).can_focus = editable
         self.query_one("#suppliers-table", DataTable).can_focus = editable
 
-        # Refresh category options so "New..." appears only in editable mode
-        cat_select = self.query_one("#category", Select)
-        prev = cat_select.value
-        self.set_categories(self._categories)
-        cat_select.value = prev
+        # Refresh category options so "New..." appears only in editable mode.
+        # Skip during initial mount -- set_categories will be called
+        # explicitly by the parent screen after loading data.
+        if self._has_toggled:
+            cat_select = self.query_one("#category", Select)
+            prev = cat_select.value
+            self.set_categories(self._categories)
+            cat_select.value = prev
+        self._has_toggled = True
 
     # -- Tier visibility ---
 

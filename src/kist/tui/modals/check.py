@@ -35,8 +35,8 @@ class LibraryCheckModal(ModalScreen):
         n = len(self._issues)
         header = f"{n} issue{'s' if n != 1 else ''} found" if n else "All clean"
 
-        with Vertical(id="check-container"):
-            yield Label(header, id="check-header")
+        with Vertical(id="check-container") as container:
+            container.border_title = header
             with VerticalScroll(id="check-results"):
                 if not self._issues:
                     yield Label("No issues found.", id="check-empty")

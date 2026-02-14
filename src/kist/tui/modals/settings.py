@@ -58,7 +58,6 @@ class SettingsModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-container"):
-            yield Label("Settings", id="settings-title")
             with VerticalScroll(id="settings-scroll"):
                 # Appearance section
                 with Vertical(classes="section", id="section-appearance"):
@@ -121,6 +120,7 @@ class SettingsModal(ModalScreen):
                 yield Button("Save", id="settings-save", variant="primary")
 
     def on_mount(self) -> None:
+        self.query_one("#settings-container").border_title = "Settings"
         self.query_one("#section-appearance").border_title = "Appearance"
 
         # Load current values

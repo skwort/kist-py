@@ -2,13 +2,16 @@ Screen {
     background: $background;
 }
 
+
+/* -- Browse screen --- */
+
 #sidebar {
     width: 25;
     height: 1fr;
     border: none;
     border-right: tall $panel;
     background: transparent;
-    padding: 0 1;
+    padding: 1 1 0 1;
     &:focus {
         border: none;
         border-right: tall $panel;
@@ -30,7 +33,7 @@ Screen {
     margin: 1 1 1 1;
     padding: 0 1;
     &:focus {
-        border: tall $border;
+        border: tall $accent 80%;
     }
 }
 
@@ -43,6 +46,7 @@ Screen {
     height: 1fr;
     content-align: center middle;
     text-opacity: 60%;
+    hatch: right $surface-lighten-1 70%;
 }
 
 .module-container {
@@ -56,15 +60,21 @@ Screen {
 /* -- Add screen URL bar and loading --- */
 
 #url-bar {
-    height: 1;
-    margin: 1 1 0 1;
+    height: 3;
+    margin: 1 1 1 1;
+    border: tall $panel;
+    background: transparent;
+    padding: 0 1;
+    &:focus-within {
+        border: tall $accent 80%;
+    }
 }
 
 #url-label {
     width: 16;
     text-align: right;
     padding: 0 1 0 0;
-    text-opacity: 70%;
+    text-opacity: 80%;
 }
 
 #url-input {
@@ -116,6 +126,12 @@ PartForm, CategoryFormModal, SettingsModal {
 
 PartForm {
     height: 1fr;
+    margin: 0 1;
+    & LoadingIndicator.-textual-loading-indicator {
+        background: $background;
+        hatch: right $surface-lighten-1 70%;
+        color: $accent;
+    }
 }
 
 /* -- PartForm layout --- */
@@ -129,7 +145,7 @@ PartForm {
     width: 16;
     padding: 0 1 0 0;
     text-align: right;
-    text-opacity: 70%;
+    text-opacity: 80%;
 }
 
 .field-value {
@@ -142,17 +158,23 @@ PartForm {
 }
 
 .section {
-    border: round $accent 40%;
-    border-title-color: $text-accent 50%;
+    border: round $panel;
+    border-title-color: $foreground 70%;
     border-title-align: right;
     height: auto;
-    margin: 1 0 0 0;
+    margin: 0;
     padding: 0 1;
     &:focus-within {
-        border: round $accent 100%;
+        border: round $accent 80%;
         border-title-color: $foreground;
         border-title-style: bold;
     }
+}
+
+PartForm.-readonly .section:focus-within {
+    border: round $panel;
+    border-title-color: $foreground 70%;
+    border-title-style: none;
 }
 
 .form-actions {
@@ -164,7 +186,7 @@ PartForm {
     width: 1fr;
     height: 1fr;
     content-align: center middle;
-    text-opacity: 40%;
+    text-opacity: 60%;
     hatch: right $surface-lighten-1 70%;
 }
 
@@ -174,6 +196,10 @@ PartForm {
 
 #notes {
     height: 1fr;
+    border: tall $panel;
+    &:focus {
+        border: tall $accent 80%;
+    }
 }
 
 /* -- PartForm grid: 2x2 layout --- */
@@ -184,6 +210,7 @@ PartForm {
 
 #form-bottom {
     height: 1fr;
+    margin-top: 1;
 }
 
 #section-general {
@@ -214,9 +241,8 @@ PartForm {
 #specs-table {
     height: auto;
     width: 1fr;
-    margin: 0 2;
+    margin: 0 1;
     &:focus {
-        margin: 0 1 0 0;
         border-left: inner $accent;
     }
 }
@@ -226,14 +252,14 @@ PartForm {
     height: 1;
     & Input {
         width: 1fr;
-        margin: 0 1;
+        margin: 0 1 0 0;
     }
     & Button {
         background: $accent;
         color: $text;
         text-style: none;
         width: auto;
-        margin: 0 3 0 0;
+        margin: 0 1 0 0;
         padding: 0 2;
         &:hover {
             text-style: bold;
@@ -247,8 +273,8 @@ PartForm {
     height: auto;
     width: 1fr;
     margin: 0 1;
+    overflow-x: hidden;
     &:focus {
-        margin: 0 0 0 0;
         border-left: inner $accent;
     }
 }
@@ -258,7 +284,7 @@ PartForm {
     height: 1;
     & Input {
         width: 1fr;
-        margin: 0 1;
+        margin: 0 1 0 0;
     }
     & Button {
         background: $accent;
@@ -271,6 +297,12 @@ PartForm {
             text-style: bold;
         }
     }
+}
+
+/* -- DataTable --- */
+
+DataTable > .datatable--header {
+    background: $panel;
 }
 
 /* -- Category form modal --- */
@@ -285,13 +317,8 @@ CategoryFormModal {
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
-    background: $surface;
+    background: $background;
     padding: 1 2;
-}
-
-#catform-title {
-    text-style: bold;
-    margin: 0 0 1 0;
 }
 
 #catform-scroll {
@@ -302,6 +329,7 @@ CategoryFormModal {
 #section-subcategories {
     height: 1fr;
     overflow-y: auto;
+    margin-top: 1;
 }
 
 #subcat-table {
@@ -309,7 +337,6 @@ CategoryFormModal {
     width: 1fr;
     margin: 0 1;
     &:focus {
-        margin: 0 0 0 0;
         border-left: inner $accent;
     }
 }
@@ -317,12 +344,21 @@ CategoryFormModal {
 #subcat-actions {
     dock: bottom;
     height: 1;
-    margin: 0 1;
+    margin: 1 1 0 1;
     & Input {
         width: 1fr;
+        margin: 0 1 0 0;
     }
     & Button {
+        background: $accent;
+        color: $text;
+        text-style: none;
         width: auto;
+        margin: 0 1 0 0;
+        padding: 0 2;
+        &:hover {
+            text-style: bold;
+        }
     }
 }
 
@@ -344,13 +380,8 @@ SettingsModal {
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
-    background: $surface;
+    background: $background;
     padding: 1 2;
-}
-
-#settings-title {
-    text-style: bold;
-    margin: 0 0 1 0;
 }
 
 #settings-scroll {
@@ -376,13 +407,8 @@ CategoryManagerModal {
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
-    background: $surface;
+    background: $background;
     padding: 1 2;
-}
-
-#catmgr-title {
-    text-style: bold;
-    margin: 0 0 1 0;
 }
 
 #catmgr-table {
@@ -403,14 +429,8 @@ LibraryCheckModal {
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
-    background: $surface;
+    background: $background;
     padding: 1 2;
-}
-
-#check-header {
-    width: 1fr;
-    text-style: bold;
-    margin: 0 0 1 0;
 }
 
 #check-results {
@@ -442,8 +462,8 @@ DetailModal {
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
-    background: $surface;
-    padding: 0 1;
+    background: $background;
+    padding: 1 2;
 }
 
 /* -- Confirm modal --- */
@@ -456,7 +476,7 @@ ConfirmModal {
     width: 50;
     height: auto;
     border: round $accent;
-    background: $surface;
+    background: $background;
     padding: 1 2;
 }
 
@@ -474,3 +494,8 @@ ConfirmModal {
     }
 }
 
+/* -- Modal overlay -- dimmed background like command palette --- */
+
+ModalScreen {
+    background: $background 40%;
+}

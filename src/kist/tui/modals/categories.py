@@ -47,8 +47,8 @@ class CategoryFormModal(ModalScreen[tuple[str, CategoryDef] | None]):
         editing = self._edit is not None
         title = "Edit Category" if editing else "New Category"
 
-        with Vertical(id="catform-container"):
-            yield Label(title, id="catform-title")
+        with Vertical(id="catform-container") as container:
+            container.border_title = title
             # Category fields
             with Horizontal(classes="form-field"):
                 yield Label("Code", classes="field-label")
@@ -254,8 +254,8 @@ class CategoryManagerModal(ModalScreen):
         self._library_path = library_path
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="catmgr-container"):
-            yield Label("Categories", id="catmgr-title")
+        with Vertical(id="catmgr-container") as container:
+            container.border_title = "Categories"
             yield DataTable(id="catmgr-table")
 
     def on_mount(self) -> None:

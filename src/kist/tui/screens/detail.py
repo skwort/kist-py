@@ -168,7 +168,7 @@ class ConfirmModal(ModalScreen[bool]):
             yield Static(self._message, id="confirm-message")
             with Horizontal(id="confirm-buttons"):
                 yield Button("Cancel", id="confirm-cancel", variant="default")
-                yield Button("Confirm", id="confirm-ok", variant="error")
+                yield Button("Confirm", id="confirm-ok", variant="default")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(event.button.id == "confirm-ok")
