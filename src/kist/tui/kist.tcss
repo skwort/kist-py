@@ -332,6 +332,33 @@ CategoryFormModal {
     margin: 1 0 0 0;
 }
 
+/* -- Category manager modal --- */
+
+CategoryManagerModal {
+    align: center middle;
+}
+
+#catmgr-container {
+    width: 90%;
+    max-width: 100;
+    height: 80%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $surface;
+    padding: 1 2;
+}
+
+#catmgr-title {
+    text-style: bold;
+    margin: 0 0 1 0;
+}
+
+#catmgr-table {
+    height: 1fr;
+    width: 1fr;
+}
+
 /* -- Check modal --- */
 
 LibraryCheckModal {

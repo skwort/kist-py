@@ -1,14 +1,20 @@
-"""CategoryFormModal tests -- create mode, edit mode, cancel."""
+"""CategoryFormModal and CategoryManagerModal tests."""
 
+import pytest
 from textual.app import App
-from textual.widgets import Input, Select
+from textual.widgets import DataTable, Input, Select
 
-from kist.models.config import CategoryDef
-from kist.tui.modals.categories import CategoryFormModal
+from kist.core.config import load_library_config, save_library_config
+from kist.core.database import create_empty
+from kist.models.config import CategoryDef, LibraryConfig
+from kist.tui.modals.categories import CategoryFormModal, CategoryManagerModal
 
 
 class ModalApp(App):
     CSS = ""
+
+
+# -- CategoryFormModal ---
 
 
 async def test_create_mode_empty_form():
@@ -79,3 +85,91 @@ async def test_save_validates_required_fields():
         await pilot.press("ctrl+s")
         # Modal should still be open
         assert isinstance(app.screen, CategoryFormModal)
+
+
+# -- CategoryManagerModal ---
+
+
+@pytest.fixture
+def library_path(tmp_path):
+    """Create a minimal library with two categories."""
+    config = LibraryConfig(
+        categories={
+            "RES": CategoryDef(
+                name="Resistors",
+                refdes="R",
+                key_specs=["resistance", "tolerance"],
+                symbol_template="resistor",
+            ),
+            "CAP": CategoryDef(
+                name="Capacitors",
+                refdes="C",
+                key_specs=["capacitance", "voltage_rating"],
+                symbol_template="capacitor",
+            ),
+        }
+    )
+    save_library_config(tmp_path, config)
+    create_empty(tmp_path / "parts.json")
+    return tmp_path
+
+
+async def test_manager_loads_categories(library_path):
+    app = ModalApp()
+    async with app.run_test():
+        await app.push_screen(CategoryManagerModal(library_path))
+        table = app.screen.query_one("#catmgr-table", DataTable)
+        assert table.row_count == 2
+
+
+async def test_manager_add_category(library_path):
+    """Add via the form modal persists to config."""
+    app = ModalApp()
+    async with app.run_test() as pilot:
+        await app.push_screen(CategoryManagerModal(library_path))
+        await pilot.press("a")
+        await pilot.pause()
+        # Fill the form
+        app.screen.query_one("#cat-code", Input).value = "DIO"
+        app.screen.query_one("#cat-name", Input).value = "Diodes"
+        app.screen.query_one("#cat-refdes", Input).value = "D"
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+        # Table updated
+        table = app.screen.query_one("#catmgr-table", DataTable)
+        assert table.row_count == 3
+        # Config persisted
+        config = load_library_config(library_path)
+        assert "DIO" in config.categories
+
+
+async def test_manager_edit_category(library_path):
+    """Edit updates the category in config."""
+    app = ModalApp()
+    async with app.run_test() as pilot:
+        await app.push_screen(CategoryManagerModal(library_path))
+        # Select first row (RES) and edit
+        await pilot.press("e")
+        await pilot.pause()
+        # Change name
+        app.screen.query_one("#cat-name", Input).value = "Resistors (Updated)"
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+        config = load_library_config(library_path)
+        assert config.categories["RES"].name == "Resistors (Updated)"
+
+
+async def test_manager_delete_category(library_path):
+    """Delete removes category from config."""
+    app = ModalApp()
+    async with app.run_test() as pilot:
+        await app.push_screen(CategoryManagerModal(library_path))
+        await pilot.press("d")
+        await pilot.pause()
+        # Confirm deletion
+        await pilot.press("tab")
+        await pilot.press("enter")
+        await pilot.pause()
+        config = load_library_config(library_path)
+        # One category removed
+        assert len(config.categories) == 1

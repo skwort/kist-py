@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Label, Select
 
+from kist.core.config import load_library_config, save_library_config
+from kist.core.database import PartsDatabase
 from kist.models.config import CategoryDef
 
 # Symbol templates that ship with kist
@@ -226,3 +230,114 @@ class CategoryFormModal(ModalScreen[tuple[str, CategoryDef] | None]):
 
     def action_cancel(self) -> None:
         self.dismiss(None)
+
+
+class CategoryManagerModal(ModalScreen):
+    """
+    Table of all library categories with CRUD operations.
+
+    Changes are saved immediately to ``.kist/config.toml``.
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+        Binding("a", "add", "Add"),
+        Binding("e", "edit", "Edit"),
+        Binding("d", "delete", "Delete"),
+    ]
+
+    def __init__(self, library_path: Path) -> None:
+        super().__init__()
+        self._library_path = library_path
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="catmgr-container"):
+            yield Label("Categories", id="catmgr-title")
+            yield DataTable(id="catmgr-table")
+
+    def on_mount(self) -> None:
+        table = self.query_one("#catmgr-table", DataTable)
+        table.add_columns("Code", "Name", "RefDes", "Key Specs", "Template")
+        table.cursor_type = "row"
+        table.zebra_stripes = True
+        self._reload_table()
+
+    def _reload_table(self) -> None:
+        """Reload category data from the library config."""
+        table = self.query_one("#catmgr-table", DataTable)
+        table.clear()
+        config = load_library_config(self._library_path)
+        for code, cat in config.categories.items():
+            specs = ", ".join(cat.key_specs) if cat.key_specs else ""
+            template = cat.symbol_template or ""
+            table.add_row(code, cat.name, cat.refdes, specs, template, key=code)
+
+    def _selected_code(self) -> str | None:
+        """Return the category code of the currently selected row."""
+        table = self.query_one("#catmgr-table", DataTable)
+        if table.row_count == 0:
+            return None
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        return str(row_key.value)
+
+    # -- Actions ---
+
+    def action_add(self) -> None:
+        self.app.push_screen(
+            CategoryFormModal(),
+            callback=self._on_form_result,
+        )
+
+    def action_edit(self) -> None:
+        code = self._selected_code()
+        if not code:
+            return
+        config = load_library_config(self._library_path)
+        cat = config.categories.get(code)
+        if not cat:
+            return
+        self.app.push_screen(
+            CategoryFormModal(edit=(code, cat)),
+            callback=self._on_form_result,
+        )
+
+    def _on_form_result(self, result: tuple[str, CategoryDef] | None) -> None:
+        if result is None:
+            return
+        code, cat_def = result
+        config = load_library_config(self._library_path)
+        config.categories[code] = cat_def
+        save_library_config(self._library_path, config)
+        self._reload_table()
+
+    def action_delete(self) -> None:
+        code = self._selected_code()
+        if not code:
+            return
+
+        # Warn if parts exist in this category
+        db = PartsDatabase(self._library_path / "parts.json")
+        db.load()
+        count = sum(1 for p in db.list_parts() if p.category == code)
+        if count:
+            msg = f"Delete {code}? {count} part{'s' if count != 1 else ''} use this category."
+        else:
+            msg = f"Delete category {code}?"
+
+        from kist.tui.screens.detail import ConfirmModal
+
+        self.app.push_screen(
+            ConfirmModal(msg),
+            callback=lambda confirmed: self._on_delete_confirmed(confirmed, code),
+        )
+
+    def _on_delete_confirmed(self, confirmed: bool | None, code: str) -> None:
+        if not confirmed:
+            return
+        config = load_library_config(self._library_path)
+        config.categories.pop(code, None)
+        save_library_config(self._library_path, config)
+        self._reload_table()
+
+    def action_close(self) -> None:
+        self.dismiss()
