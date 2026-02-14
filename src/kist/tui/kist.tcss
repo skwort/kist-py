@@ -81,7 +81,7 @@ Screen {
 
 /* -- Compact form widgets (Posting-style) --- */
 
-PartForm {
+PartForm, CategoryFormModal {
     & Input {
         padding: 0 1;
         height: 1;
@@ -271,6 +271,65 @@ PartForm {
             text-style: bold;
         }
     }
+}
+
+/* -- Category form modal --- */
+
+CategoryFormModal {
+    align: center middle;
+}
+
+#catform-container {
+    width: 70;
+    max-height: 85%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $surface;
+    padding: 1 2;
+}
+
+#catform-title {
+    text-style: bold;
+    margin: 0 0 1 0;
+}
+
+#catform-scroll {
+    height: auto;
+    max-height: 100%;
+}
+
+#section-subcategories {
+    height: 1fr;
+    overflow-y: auto;
+}
+
+#subcat-table {
+    height: auto;
+    width: 1fr;
+    margin: 0 1;
+    &:focus {
+        margin: 0 0 0 0;
+        border-left: inner $accent;
+    }
+}
+
+#subcat-actions {
+    dock: bottom;
+    height: 1;
+    margin: 0 1;
+    & Input {
+        width: 1fr;
+    }
+    & Button {
+        width: auto;
+    }
+}
+
+#catform-buttons {
+    height: auto;
+    align: right middle;
+    margin: 1 0 0 0;
 }
 
 /* -- Check modal --- */
