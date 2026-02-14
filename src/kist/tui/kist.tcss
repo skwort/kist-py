@@ -289,3 +289,31 @@ DetailModal {
     padding: 0 1;
 }
 
+/* -- Confirm modal --- */
+
+ConfirmModal {
+    align: center middle;
+}
+
+#confirm-container {
+    width: 50;
+    height: auto;
+    border: round $accent;
+    background: $surface;
+    padding: 1 2;
+}
+
+#confirm-message {
+    width: 1fr;
+    content-align: center middle;
+    margin: 0 0 1 0;
+}
+
+#confirm-buttons {
+    height: auto;
+    align: center middle;
+    & Button {
+        margin: 0 1;
+    }
+}
+
