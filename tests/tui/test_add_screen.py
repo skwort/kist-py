@@ -190,6 +190,20 @@ async def test_load_from_provider_detects_semi_jellybean_tier(app):
         assert form.query_one("#tier", Select).value == Tier.SEMI_JELLYBEAN
 
 
+async def test_load_from_provider_unknown_category_no_crash(app):
+    """Provider category not in config leaves Select blank instead of crashing."""
+    product = _make_ic_product()
+
+    async with app.run_test():
+        form = app.query_one("#part-form", PartForm)
+        form.set_categories({})  # empty config, no IC option
+        form.load_from_provider(product)
+
+        assert form.query_one("#category", Select).value == Select.BLANK
+        # Other fields still populated
+        assert form.query_one("#mpn", Input).value == "STM32F405RGT6"
+
+
 # -- Clear ---
 
 

@@ -599,10 +599,15 @@ class PartForm(Static):
         self.query_one("#tier", Select).value = tier
         self._apply_tier_visibility(tier)
 
-        # Category
-        if product.category:
+        # Category -- only set if it's a valid option in the Select
+        if product.category and product.category in self._categories:
             self.query_one("#category", Select).value = product.category
             self._update_subcategories(product.category)
+        elif product.category:
+            self.notify(
+                f"Unknown category '{product.category}' -- select manually",
+                severity="warning",
+            )
 
         # Identity
         self.query_one("#mpn", Input).value = product.mpn
