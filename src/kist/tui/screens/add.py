@@ -12,8 +12,6 @@ from textual.screen import Screen
 from textual.widgets import Footer, Input, Label
 
 from kist import __version__
-from kist.core.config import load_library_config
-from kist.core.database import PartsDatabase
 from kist.errors import DuplicatePartError, ProviderError
 from kist.providers import detect_provider, fetch_product
 from kist.tui.app import KistApp
@@ -110,12 +108,10 @@ class AddScreen(Screen):
         form = self.query_one("#part-form", PartForm)
         d = form.to_dict()
 
-        library_path = self.app.library_path
-        if not library_path:
+        config = self.app.library_config
+        if not config:
             self.notify("No library found -- run kist init first", severity="error")
             return
-
-        config = load_library_config(library_path)
 
         try:
             part = build_part_from_form(d, config.categories, config.separator)
@@ -128,11 +124,8 @@ class AddScreen(Screen):
             self.notify(f"Invalid part data: {msg}", severity="error")
             return
 
-        # Persist
-        db = PartsDatabase(library_path / "parts.json")
-        db.load()
         try:
-            db.add(part)
+            self.app.save_part(part)
         except DuplicatePartError:
             self.notify(f"Part already exists: {part.name}", severity="error")
             return

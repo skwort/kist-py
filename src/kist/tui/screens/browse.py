@@ -71,6 +71,7 @@ class BrowseScreen(Screen):
 
     def on_mount(self) -> None:
         self.watch(self.app, "library_path", self._on_library_changed)
+        self.watch(self.app, "parts_version", self._on_parts_changed)
 
     def _on_library_changed(self, path: Path | None) -> None:
         """React to the app discovering (or losing) a library."""
@@ -172,13 +173,11 @@ class BrowseScreen(Screen):
         ipn = Ipn(str(event.row_key.value))
         part = next((p for p in self._all_parts if p.ipn == ipn), None)
         if part:
-            self.app.push_screen(
-                DetailModal(part),
-                callback=self._on_detail_closed,
-            )
+            self.app.push_screen(DetailModal(part))
 
-    def _on_detail_closed(self, changed: bool | None) -> None:
-        if changed:
+    def _on_parts_changed(self, version: int) -> None:
+        """Reload parts when the app signals a mutation."""
+        if self.app.library_path:
             self._on_library_changed(self.app.library_path)
 
     def action_focus_search(self) -> None:

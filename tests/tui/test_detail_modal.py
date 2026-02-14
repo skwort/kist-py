@@ -115,23 +115,17 @@ async def test_escape_dismisses_modal():
         assert not isinstance(app.screen, DetailModal)
 
 
-async def test_escape_returns_false_when_unchanged():
-    """Dismiss without changes returns False."""
+async def test_escape_dismisses_without_callback():
+    """Dismiss without changes closes the modal (no callback needed)."""
     part = _make_proprietary_part()
-    result = None
-
-    def on_dismiss(value: bool | None) -> None:
-        nonlocal result
-        result = value
-
     app = BrowseApp()
 
     async with app.run_test() as pilot:
-        await app.push_screen(DetailModal(part), callback=on_dismiss)
+        await app.push_screen(DetailModal(part))
         await pilot.pause()
         await pilot.press("escape")
 
-        assert result is False
+        assert not isinstance(app.screen, DetailModal)
 
 
 # -- Edit toggle ---

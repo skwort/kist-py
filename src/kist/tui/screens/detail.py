@@ -9,23 +9,18 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Footer, Static
 
-from kist.core.config import load_library_config
-from kist.core.database import PartsDatabase
 from kist.models.part import Part
 from kist.tui.app import KistApp
 from kist.tui.save import ValidationNotice, build_part_from_form
 from kist.tui.widgets.part_form import PartForm
 
 
-class DetailModal(ModalScreen[bool]):
-    app = getters.app(KistApp)
-
+class DetailModal(ModalScreen):
     """
     Modal showing full part details in PartForm readonly mode.
-
-    Returns True on dismiss if the underlying data changed (edit/delete),
-    so the browse screen knows to refresh.
     """
+
+    app = getters.app(KistApp)
 
     BINDINGS = [
         Binding("escape", "close", "Close"),
@@ -37,7 +32,6 @@ class DetailModal(ModalScreen[bool]):
     def __init__(self, part: Part) -> None:
         super().__init__()
         self._part = part
-        self._changed = False
         self._form_snapshot: dict = {}
 
     def compose(self) -> ComposeResult:
@@ -83,12 +77,11 @@ class DetailModal(ModalScreen[bool]):
         if form.mode != "editable":
             return
 
-        library_path = self.app.library_path
-        if not library_path:
+        config = self.app.library_config
+        if not config:
             self.notify("No library found", severity="error")
             return
 
-        config = load_library_config(library_path)
         d = form.to_dict()
 
         try:
@@ -101,16 +94,10 @@ class DetailModal(ModalScreen[bool]):
             self.notify(f"Invalid part data: {msg}", severity="error")
             return
 
-        db = PartsDatabase(library_path / "parts.json")
-        db.load()
-
-        # Remove old, add new (IPN may change since name changed)
         assert self._part.ipn is not None
-        db.remove(self._part.ipn)
-        db.add(new_part)
+        self.app.save_part(new_part, replacing=self._part.ipn)
 
         self._part = new_part
-        self._changed = True
         self._form_snapshot = form.to_dict()
         self.query_one("#detail-container").border_title = new_part.name
         form.mode = "readonly"
@@ -129,15 +116,9 @@ class DetailModal(ModalScreen[bool]):
         if not confirmed:
             return
 
-        library_path = self.app.library_path
-        if not library_path:
-            return
-
-        db = PartsDatabase(library_path / "parts.json")
-        db.load()
         assert self._part.ipn is not None
-        db.remove(self._part.ipn)
-        self.dismiss(True)
+        self.app.delete_part(self._part.ipn)
+        self.dismiss()
 
     # -- Close ---
 
@@ -152,7 +133,7 @@ class DetailModal(ModalScreen[bool]):
             else:
                 self._switch_to_readonly()
             return
-        self.dismiss(self._changed)
+        self.dismiss()
 
     def _switch_to_readonly(self) -> None:
         """Revert form to readonly, restoring the snapshot values."""
