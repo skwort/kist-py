@@ -45,6 +45,9 @@ class DetailModal(ModalScreen):
 
     def _load_part(self) -> None:
         form = self.query_one("#detail-form", PartForm)
+        config = self.app.library_config
+        if config:
+            form.set_categories(config.categories)
         form.load_part(self._part)
         self._form_snapshot = form.to_dict()
         # Reset focus so nothing inside the readonly form is focused

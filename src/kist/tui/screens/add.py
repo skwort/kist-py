@@ -52,6 +52,9 @@ class AddScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        config = self.app.library_config
+        if config:
+            self.query_one("#part-form", PartForm).set_categories(config.categories)
         if self._url_or_mpn:
             self.query_one("#url-input", Input).value = self._url_or_mpn
             self._start_fetch(self._url_or_mpn)

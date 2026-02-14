@@ -17,6 +17,7 @@ from textual.widgets import (
 )
 
 from kist.core.categories import WELL_KNOWN_CATEGORIES
+from kist.models.config import CategoryDef
 from kist.models.part import (
     Mounting,
     Part,
@@ -43,16 +44,6 @@ MOUNTING_OPTIONS: list[tuple[str, str]] = [
 CATEGORY_OPTIONS: list[tuple[str, str]] = [
     (f"{code} ({cat.name})", code) for code, cat in WELL_KNOWN_CATEGORIES.items()
 ]
-
-
-def _subcategory_options(category: str) -> list[tuple[str, str]]:
-    """Build subcategory select options for a given category code."""
-    cat_def = WELL_KNOWN_CATEGORIES.get(category)
-    if cat_def is None or not cat_def.subcategory_names:
-        return []
-    return [
-        (f"{code} ({name})", code) for code, name in cat_def.subcategory_names.items()
-    ]
 
 
 # -- Provider helpers ---
@@ -91,12 +82,14 @@ class PartForm(Static):
         self,
         mode: Literal["editable", "readonly"] = "editable",
         *,
+        categories: dict[str, CategoryDef] | None = None,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(name=name, id=id, classes=classes)
         self._mode: Literal["editable", "readonly"] = mode
+        self._categories = categories or WELL_KNOWN_CATEGORIES
 
     @property
     def mode(self) -> Literal["editable", "readonly"]:
@@ -343,11 +336,23 @@ class PartForm(Static):
 
     # -- Category cascading ---
 
+    def set_categories(self, categories: dict[str, CategoryDef]) -> None:
+        """Update category and subcategory options from library config."""
+        self._categories = categories
+        options = [(f"{code} ({cat.name})", code) for code, cat in categories.items()]
+        self.query_one("#category", Select).set_options(options)
+
     def _update_subcategories(self, category: str) -> None:
         """Update subcategory select options based on category."""
-        options = _subcategory_options(category)
-        sub_select = self.query_one("#subcategory", Select)
-        sub_select.set_options(options)
+        cat_def = self._categories.get(category)
+        if cat_def is None or not cat_def.subcategory_names:
+            options = []
+        else:
+            options = [
+                (f"{code} ({name})", code)
+                for code, name in cat_def.subcategory_names.items()
+            ]
+        self.query_one("#subcategory", Select).set_options(options)
 
     # -- Event handlers ---
 
@@ -469,7 +474,7 @@ class PartForm(Static):
         self.query_one("#tier-ro", Label).update(part.tier.value)
 
         self.query_one("#category", Select).value = part.category
-        cat_def = WELL_KNOWN_CATEGORIES.get(part.category)
+        cat_def = self._categories.get(part.category)
         cat_label = f"{part.category} ({cat_def.name})" if cat_def else part.category
         self.query_one("#category-ro", Label).update(cat_label)
 
