@@ -25,37 +25,87 @@ REQUEST_TIMEOUT = 30  # seconds
 #   in ignore list --> dropped
 #   anything else  --> ProviderProduct.parameters[target]
 #
-# Parameters not in this map pass through with their raw name.
+# Methodology: extracted by fetching 86 products across two real BOMs via
+# the DigiKey v4 API, then analysing parameter frequency and usefulness.
+# Re-run on a wider data set to discover new parameter names worth mapping.
 
 PARAMETER_MAP: dict[str, str] = {
     # Extracted to top-level fields
     "Package / Case": "package",
     "Mounting Type": "mounting",
-    # Spec parameters
+    # -- Passive specs ----------------------------------------------------------
     "Resistance": "resistance",
     "Tolerance": "tolerance",
     "Capacitance": "capacitance",
     "Inductance": "inductance",
+    "Temperature Coefficient": "temp_coefficient",
+    "Composition": "composition",
+    "Power (Watts)": "power_rating",
+    "ESR (Equivalent Series Resistance)": "esr",
+    # -- Voltage ----------------------------------------------------------------
     "Voltage - Rated": "voltage_rating",
     "Voltage - Reverse Standoff (Typ)": "standoff_voltage",
     "Voltage - Zener (Nom) (Vz)": "zener_voltage",
     "Voltage - Collector Emitter Breakdown (Max)": "vceo",
     "Voltage - Drain to Source (Vdss)": "vds_max",
-    "Current - Collector (Ic) (Max)": "ic_max",
-    "Current - Drain (Id) (Max)": "id_max",
+    "Voltage - Breakdown (Min)": "breakdown_voltage",
+    "Voltage - Clamping (Max) @ Ipp": "clamping_voltage",
+    "Voltage - Supply": "voltage_supply",
+    "Voltage - Output (Min/Fixed)": "voltage_output",
+    "Voltage - Output (Max)": "voltage_output_max",
+    "Voltage - Input (Min)": "voltage_input_min",
+    "Voltage - Input (Max)": "voltage_input_max",
+    # -- Current ----------------------------------------------------------------
     "Current Rating (Amps)": "current_rating",
     "Current - Peak Pulse (10/1000\u00b5s)": "peak_current",
     "Forward Current (If)": "forward_current",
-    "Power - Max": "power_rating",
+    "Current - Collector (Ic) (Max)": "ic_max",
+    "Current - Drain (Id) (Max)": "id_max",
+    "Current - Output": "current_output",
+    "Current - Saturation (Isat)": "isat",
+    "Hold Current (Ih)": "hold_current",
+    # -- Power ------------------------------------------------------------------
+    "Power - Max": "power_max",
     "Peak Pulse Power (Tp=8/20\u00b5s)": "peak_power",
+    "Power - Peak Pulse": "peak_power_pulse",
+    # -- Inductor specs ---------------------------------------------------------
+    "DC Resistance (DCR)": "dcr",
+    "Q @ Freq": "q_factor",
+    # -- Frequency --------------------------------------------------------------
     "Frequency": "frequency",
     "Frequency - Self Resonant": "srf",
+    "Frequency Tolerance": "frequency_tolerance",
     "Load Capacitance": "load_capacitance",
     "Impedance @ Frequency": "impedance",
     "Impedance": "impedance_100mhz",
-    "Hold Current (Ih)": "hold_current",
+    # -- IC / regulator ---------------------------------------------------------
+    "Topology": "topology",
+    "Protocol": "protocol",
+    "Output Configuration": "output_config",
+    # -- Misc -------------------------------------------------------------------
     "Color": "colour",
 }
+
+# -- Ignored parameters --------------------------------------------------------
+# Parameters dropped entirely after name normalisation.  These are either
+# boilerplate (present on nearly every product) or physical dimensions that
+# don't help with part selection.
+
+IGNORE_PARAMETERS: list[str] = [
+    "Operating Temperature",
+    "Features",
+    "Supplier Device Package",
+    "Size / Dimension",
+    "Height - Seated (Max)",
+    "Ratings",
+    "Failure Rate",
+    "Applications",
+    "Thickness (Max)",
+    "Lead Spacing",
+    "Lead Style",
+    "Number of Terminations",
+    "DigiKey Programmable",
+]
 
 # -- Category mapping -------------------------------------------------------
 # Best-effort mapping from DigiKey category names to kist category codes.
@@ -63,6 +113,7 @@ PARAMETER_MAP: dict[str, str] = {
 # Unknown categories return None -- the TUI will let the user pick.
 
 CATEGORY_MAP: dict[str, str] = {
+    # -- Passives ---------------------------------------------------------------
     "Resistors": "RES",
     "Chip Resistor - Surface Mount": "RES",
     "Through Hole Resistors": "RES",
@@ -74,24 +125,58 @@ CATEGORY_MAP: dict[str, str] = {
     "Inductors, Coils, Chokes": "IND",
     "Fixed Inductors": "IND",
     "Ferrite Beads and Chips": "IND",
+    "Filters": "IND",
+    "EMI/RFI Filters (LC, RC Networks)": "IND",
+    # -- Diodes / TVS -----------------------------------------------------------
     "Diodes - Rectifiers - Single": "DIO",
     "Diodes - Zener - Single": "DIO",
     "TVS - Diodes": "DIO",
+    "Transient Voltage Suppressors (TVS)": "DIO",
+    "Circuit Protection": "DIO",
     "LEDs": "DIO",
+    # -- Transistors -------------------------------------------------------------
     "Transistors - MOSFETs": "TRAN",
     "Transistors - BJTs": "TRAN",
     "Transistors - FETs, MOSFETs - Single": "TRAN",
     "Transistors - Bipolar (BJT) - Single": "TRAN",
+    # -- ICs (including subcategories) ------------------------------------------
     "Integrated Circuits (ICs)": "IC",
+    "Power Management (PMIC)": "IC",
+    "Data Acquisition": "IC",
+    "Embedded": "IC",
+    "Interface": "IC",
+    "Logic": "IC",
+    "Memory": "IC",
+    "RF and Wireless": "IC",
+    "RF Transceiver ICs": "IC",
+    "RF Transceiver Modules and Modems": "IC",
+    "RF Front End (LNA + PA)": "IC",
+    "Sensors, Transducers": "IC",
+    "Humidity, Moisture Sensors": "IC",
+    "Magnetic Sensors": "IC",
+    "Motion Sensors": "IC",
+    # -- Connectors --------------------------------------------------------------
     "Connectors": "CONN",
     "Connectors, Interconnects": "CONN",
+    "Rectangular Connectors": "CONN",
     "Rectangular Connectors - Headers, Male Pins": "CONN",
     "Rectangular Connectors - Free Hanging, Panel Mount": "CONN",
     "USB, DVI, HDMI Connectors": "CONN",
+    "Coaxial Connectors (RF)": "CONN",
+    "FFC, FPC (Flat Flexible) Connectors": "CONN",
+    "Memory Connectors": "CONN",
+    "Terminal Blocks": "CONN",
+    "Cable Assemblies": "CONN",
+    "Flat Flex Ribbon Jumpers, Cables": "CONN",
+    # -- Switches / Relays ------------------------------------------------------
     "Switches": "SW",
+    "Slide Switches": "SW",
     "Relays": "REL",
+    # -- Crystals / Oscillators -------------------------------------------------
     "Crystals": "XTAL",
+    "Crystals, Oscillators, Resonators": "XTAL",
     "Oscillators": "XTAL",
+    # -- Fuses / Transformers ---------------------------------------------------
     "Fuses": "FUSE",
     "PTC Resettable Fuses": "FUSE",
     "Transformers": "TFRM",
@@ -102,7 +187,10 @@ CATEGORY_MAP: dict[str, str] = {
 
 MOUNTING_MAP: dict[str, str] = {
     "Surface Mount": "smd",
+    "Surface Mount, MLCC": "smd",
+    "Surface Mount, Right Angle": "smd",
     "Through Hole": "tht",
+    "Surface Mount, Right Angle; Through Hole": "tht",
 }
 
 # Target names that route to top-level ProviderProduct fields
@@ -116,6 +204,7 @@ def default_mapping() -> ProviderMappingConfig:
         supplier_name="DigiKey",
         categories=dict(CATEGORY_MAP),
         parameters=dict(PARAMETER_MAP),
+        ignore_parameters=list(IGNORE_PARAMETERS),
         mounting=dict(MOUNTING_MAP),
     )
 

@@ -87,6 +87,16 @@ SAMPLE_RESPONSE = {
                 "ValueText": "0.1W, 1/10W",
             },
             {
+                "ParameterId": 252,
+                "ParameterText": "Composition",
+                "ValueText": "Thick Film",
+            },
+            {
+                "ParameterId": 9999,
+                "ParameterText": "Number of Terminations",
+                "ValueText": "2",
+            },
+            {
                 "ParameterId": 16,
                 "ParameterText": "Package / Case",
                 "ValueText": "0603 (1608 Metric)",
@@ -164,10 +174,17 @@ def test_map_parameters_renamed():
     assert result.parameters["tolerance"] == "\u00b11%"
 
 
-def test_map_unknown_parameters_preserved():
-    """Parameters not in PARAMETER_MAP keep their original name."""
+def test_map_known_parameters_renamed():
+    """Mapped parameters get their normalised target name."""
     result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
-    assert result.parameters["Power (Watts)"] == "0.1W, 1/10W"
+    assert result.parameters["power_rating"] == "0.1W, 1/10W"
+    assert result.parameters["composition"] == "Thick Film"
+
+
+def test_map_ignored_parameters_dropped():
+    """Parameters in the ignore list are dropped entirely."""
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert "Number of Terminations" not in result.parameters
 
 
 def test_map_no_variations_keeps_input_pn():
