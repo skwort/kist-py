@@ -4,13 +4,16 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.widgets import Input, Label, Select
 
+from kist.core.config import load_library_config, save_library_config
+from kist.models.config import CategoryDef, LibraryConfig
 from kist.models.part import (
     Mounting,
     ProprietaryPart,
     SupplierInfo,
     Tier,
 )
-from kist.tui.widgets.part_form import PartForm
+from kist.tui.app import KistApp
+from kist.tui.widgets.part_form import _NEW_CATEGORY, PartForm
 
 
 class PartFormApp(App):
@@ -185,3 +188,111 @@ async def test_load_part_to_dict_roundtrip(editable_app):
         assert d["symbol"] == "00k-ICs:IC-STM32F405"
         assert d["footprint"] == "Package_QFP:LQFP-64"
         assert d["keywords"] == ["arm", "cortex"]
+
+
+# -- Inline category creation ---
+
+
+class InlineCatApp(KistApp):
+    """KistApp subclass for testing inline category creation."""
+
+    CSS_PATH = None
+    CSS = ""
+
+    def __init__(self, library_path):
+        super().__init__()
+        self._test_library_path = library_path
+
+    def _discover_library(self):
+        self.library_path = self._test_library_path
+        self.library_config = load_library_config(self._test_library_path)
+
+    def get_default_screen(self):
+        from textual.screen import Screen
+
+        class FormScreen(Screen):
+            def compose(self_inner) -> ComposeResult:
+                yield PartForm(mode="editable", id="form")
+
+            def on_mount(self_inner):
+                config = self.library_config
+                if config:
+                    self_inner.query_one("#form", PartForm).set_categories(
+                        config.categories
+                    )
+
+        return FormScreen()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_inline_config(monkeypatch, tmp_path):
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(tmp_path / "config"))
+
+
+@pytest.fixture
+def inline_lib(tmp_path):
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    cfg = LibraryConfig(categories={"RES": CategoryDef(name="Resistors", refdes="R")})
+    save_library_config(lib, cfg)
+    return lib
+
+
+async def test_set_categories_includes_new_sentinel(inline_lib):
+    app = InlineCatApp(inline_lib)
+    async with app.run_test():
+        form = app.screen.query_one("#form", PartForm)
+        cat_select = form.query_one("#category", Select)
+        values = [opt[1] for opt in cat_select._options]
+        assert _NEW_CATEGORY in values
+        assert "RES" in values
+
+
+async def test_new_sentinel_not_in_readonly():
+    """Readonly forms should not show the New... option."""
+    app = PartFormApp(mode="readonly")
+    async with app.run_test():
+        form = app.query_one("#form", PartForm)
+        categories = {"IC": CategoryDef(name="ICs", refdes="U")}
+        form._mode = "readonly"
+        form.set_categories(categories)
+        cat_select = form.query_one("#category", Select)
+        values = [opt[1] for opt in cat_select._options]
+        assert _NEW_CATEGORY not in values
+        assert "IC" in values
+
+
+async def test_new_category_callback_saves_and_selects(inline_lib):
+    app = InlineCatApp(inline_lib)
+    async with app.run_test():
+        form = app.screen.query_one("#form", PartForm)
+
+        # Simulate the callback that CategoryFormModal would invoke
+        new_cat = CategoryDef(name="Optocouplers", refdes="U")
+        form._on_new_category_result(("OPTO", new_cat))
+
+        # Category should be selected
+        cat_select = form.query_one("#category", Select)
+        assert cat_select.value == "OPTO"
+
+        # New category should appear in options
+        values = [opt[1] for opt in cat_select._options]
+        assert "OPTO" in values
+        assert "RES" in values  # existing category preserved
+
+        # Config should be persisted
+        loaded = load_library_config(inline_lib)
+        assert "OPTO" in loaded.categories
+        assert loaded.categories["OPTO"].name == "Optocouplers"
+
+
+async def test_new_category_cancel_leaves_blank(inline_lib):
+    app = InlineCatApp(inline_lib)
+    async with app.run_test():
+        form = app.screen.query_one("#form", PartForm)
+
+        # Simulate cancel (None result)
+        form._on_new_category_result(None)
+
+        cat_select = form.query_one("#category", Select)
+        assert cat_select.value == Select.BLANK

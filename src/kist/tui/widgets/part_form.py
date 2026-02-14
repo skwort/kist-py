@@ -45,6 +45,8 @@ CATEGORY_OPTIONS: list[tuple[str, str]] = [
     (f"{code} ({cat.name})", code) for code, cat in WELL_KNOWN_CATEGORIES.items()
 ]
 
+_NEW_CATEGORY = "__new__"
+
 
 # -- Provider helpers ---
 
@@ -339,7 +341,11 @@ class PartForm(Static):
     def set_categories(self, categories: dict[str, CategoryDef]) -> None:
         """Update category and subcategory options from library config."""
         self._categories = categories
-        options = [(f"{code} ({cat.name})", code) for code, cat in categories.items()]
+        options: list[tuple[str, str]] = [
+            (f"{code} ({cat.name})", code) for code, cat in categories.items()
+        ]
+        if self._mode == "editable":
+            options.append(("New...", _NEW_CATEGORY))
         self.query_one("#category", Select).set_options(options)
 
     def _update_subcategories(self, category: str) -> None:
@@ -354,13 +360,48 @@ class PartForm(Static):
             ]
         self.query_one("#subcategory", Select).set_options(options)
 
+    # -- Inline category creation ---
+
+    def _open_new_category_modal(self) -> None:
+        """Push CategoryFormModal and reset select to blank while modal is open."""
+        from kist.tui.modals.categories import CategoryFormModal
+
+        self.query_one("#category", Select).value = Select.BLANK
+        self.app.push_screen(
+            CategoryFormModal(),
+            callback=self._on_new_category_result,
+        )
+
+    def _on_new_category_result(self, result: tuple[str, CategoryDef] | None) -> None:
+        """Handle CategoryFormModal result: save, refresh options, select."""
+        if result is None:
+            return
+        code, cat_def = result
+
+        from kist.tui.app import KistApp
+
+        app: KistApp = self.app  # type: ignore[assignment]
+        config = app.library_config
+        if config is None:
+            return
+        config.categories[code] = cat_def
+        app.update_library_config(config)
+
+        # Refresh category options and select the new code
+        self.set_categories(config.categories)
+        self.query_one("#category", Select).value = code
+        self._update_subcategories(code)
+
     # -- Event handlers ---
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "tier" and event.value != Select.BLANK:
             self._apply_tier_visibility(str(event.value))
         elif event.select.id == "category" and event.value != Select.BLANK:
-            self._update_subcategories(str(event.value))
+            if event.value == _NEW_CATEGORY:
+                self._open_new_category_modal()
+            else:
+                self._update_subcategories(str(event.value))
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Enable Add buttons when required inputs have content."""
