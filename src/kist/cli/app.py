@@ -137,12 +137,10 @@ def search(
 @app.command()
 def check() -> None:
     """Validate part names and check for duplicates."""
-    from collections import defaultdict
-
+    from kist.core.check import check_library
     from kist.core.config import load_library_config
     from kist.core.database import PartsDatabase
     from kist.core.library import find_library
-    from kist.core.naming import generate_name, get_identity
     from kist.errors import LibraryNotFoundError
 
     try:
@@ -154,37 +152,23 @@ def check() -> None:
     config = load_library_config(library_root)
     db = PartsDatabase(library_root / "parts.json")
     db.load()
-    parts = db.list_parts()
 
-    if not parts:
+    if not db.list_parts():
         typer.echo("No parts to check.")
         raise typer.Exit()
 
-    typer.echo(f"Checking {len(parts)} parts...")
+    typer.echo(f"Checking {len(db.list_parts())} parts...")
 
-    issues = 0
-    categories = config.categories
+    issues = check_library(db, config)
 
-    # Check 1: name drift
-    for part in parts:
-        expected = generate_name(part, categories, config.separator)
-        if part.name != expected:
-            typer.echo(f'  Name mismatch: "{part.name}" should be "{expected}"')
-            issues += 1
-
-    # Check 2: identity duplicates
-    by_identity: dict[tuple[str, ...], list[str]] = defaultdict(list)
-    for part in parts:
-        by_identity[get_identity(part, categories)].append(part.name)
-
-    for identity, names in by_identity.items():
-        if len(names) > 1:
-            joined = " and ".join(names)
-            typer.echo(f"  Duplicate identity: {joined} share {identity}")
-            issues += 1
+    for issue in issues:
+        if issue.kind == "name_drift":
+            typer.echo(f"  Name mismatch: {issue.message}")
+        elif issue.kind == "duplicate_identity":
+            typer.echo(f"  Duplicate identity: {issue.message}")
 
     if issues:
-        typer.echo(f"\n{issues} issue(s) found.")
+        typer.echo(f"\n{len(issues)} issue(s) found.")
         raise typer.Exit(code=1)
 
     typer.echo("All clean.")
