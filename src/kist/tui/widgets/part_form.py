@@ -325,6 +325,12 @@ class PartForm(Static):
         self.query_one("#specs-table", DataTable).can_focus = editable
         self.query_one("#suppliers-table", DataTable).can_focus = editable
 
+        # Refresh category options so "New..." appears only in editable mode
+        cat_select = self.query_one("#category", Select)
+        prev = cat_select.value
+        self.set_categories(self._categories)
+        cat_select.value = prev
+
     # -- Tier visibility ---
 
     def _apply_tier_visibility(self, tier: str | None) -> None:
@@ -345,7 +351,7 @@ class PartForm(Static):
             (f"{code} ({cat.name})", code) for code, cat in categories.items()
         ]
         if self._mode == "editable":
-            options.append(("New...", _NEW_CATEGORY))
+            options.insert(0, ("New...", _NEW_CATEGORY))
         self.query_one("#category", Select).set_options(options)
 
     def _update_subcategories(self, category: str) -> None:
