@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import TYPE_CHECKING
 
 from textual import work
@@ -14,10 +13,10 @@ from textual.screen import Screen
 from textual.widgets import Footer, Input, Label, Static
 
 from kist import __version__
-from kist.core.config import load_global_config, load_library_config
+from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
 from kist.core.naming import generate_description, generate_name, generate_value
-from kist.errors import DigiKeyError, DuplicatePartError
+from kist.errors import DuplicatePartError, ProviderError
 from kist.models.part import (
     JellybeanPart,
     ProprietaryPart,
@@ -25,8 +24,7 @@ from kist.models.part import (
     SupplierInfo,
     Tier,
 )
-from kist.providers.digikey import DigiKeyClient, parse_digikey_url
-from kist.providers.models import ProviderProduct
+from kist.providers import detect_provider, fetch_product
 from kist.tui.widgets.header import KistHeader
 from kist.tui.widgets.part_form import PartForm
 
@@ -59,7 +57,7 @@ class AddScreen(Screen):
         yield KistHeader(icon="\N{PACKAGE}", page_title="Add Part")
         with Horizontal(id="url-bar"):
             yield Label("URL / MPN", id="url-label")
-            yield Input(id="url-input", placeholder="Paste DigiKey URL or enter MPN")
+            yield Input(id="url-input", placeholder="Paste supplier URL or enter MPN")
         yield Static("", id="loading-indicator")
         yield PartForm(mode="editable", id="part-form")
         yield Footer()
@@ -81,16 +79,16 @@ class AddScreen(Screen):
     # -- Fetch worker ---
 
     def _start_fetch(self, url_or_mpn: str) -> None:
-        """Parse the input and kick off a background fetch."""
+        """Validate input and kick off a background fetch."""
         self._url_or_mpn = url_or_mpn
         try:
-            product_number = parse_digikey_url(url_or_mpn)
-        except DigiKeyError as exc:
+            provider_name, identifier = detect_provider(url_or_mpn)
+        except ProviderError as exc:
             self.notify(str(exc), severity="error")
             return
 
         loading = self.query_one("#loading-indicator", Static)
-        loading.update(f"Fetching {product_number} from DigiKey...")
+        loading.update(f"Fetching {identifier} from {provider_name}...")
         self.query_one("#loading-indicator").display = True
         self.query_one("#part-form").display = False
         self._fetch_worker()
@@ -98,9 +96,10 @@ class AddScreen(Screen):
     @work(exclusive=True)
     async def _fetch_worker(self) -> None:
         """Async worker: run blocking API call in a thread, populate form."""
+        assert self._url_or_mpn is not None
         try:
-            product = await asyncio.to_thread(self._fetch_product)
-        except DigiKeyError as exc:
+            product = await asyncio.to_thread(fetch_product, self._url_or_mpn)
+        except ProviderError as exc:
             self._show_form()
             self.notify(str(exc), severity="error")
         except Exception as exc:
@@ -110,22 +109,6 @@ class AddScreen(Screen):
             self._show_form()
             form = self.query_one("#part-form", PartForm)
             form.load_from_provider(product)
-
-    def _fetch_product(self) -> ProviderProduct:
-        """Blocking: parse URL/MPN, load credentials, call DigiKey API."""
-        assert self._url_or_mpn is not None  # set by _start_fetch before worker
-        product_number = parse_digikey_url(self._url_or_mpn)
-        global_cfg = load_global_config()
-        dk_cfg = global_cfg.providers.digikey
-        # Env vars first, config file as fallback
-        client_id = os.environ.get("KIST_DIGIKEY_CLIENT_ID") or dk_cfg.client_id
-        client_secret = (
-            os.environ.get("KIST_DIGIKEY_CLIENT_SECRET") or dk_cfg.client_secret
-        )
-        if not client_id or not client_secret:
-            raise DigiKeyError("DigiKey credentials not configured")
-        client = DigiKeyClient(client_id, client_secret)
-        return client.fetch_product(product_number)
 
     def _show_form(self) -> None:
         """Hide loading indicator and restore the form."""
