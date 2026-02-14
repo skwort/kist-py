@@ -81,7 +81,7 @@ Screen {
 
 /* -- Compact form widgets (Posting-style) --- */
 
-PartForm, CategoryFormModal {
+PartForm, CategoryFormModal, SettingsModal {
     & Input {
         padding: 0 1;
         height: 1;
@@ -327,6 +327,37 @@ CategoryFormModal {
 }
 
 #catform-buttons {
+    height: auto;
+    align: right middle;
+    margin: 1 0 0 0;
+}
+
+/* -- Settings modal --- */
+
+SettingsModal {
+    align: center middle;
+}
+
+#settings-container {
+    width: 70;
+    max-height: 85%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $surface;
+    padding: 1 2;
+}
+
+#settings-title {
+    text-style: bold;
+    margin: 0 0 1 0;
+}
+
+#settings-scroll {
+    height: 1fr;
+}
+
+#settings-buttons {
     height: auto;
     align: right middle;
     margin: 1 0 0 0;
