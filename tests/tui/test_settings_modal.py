@@ -11,15 +11,15 @@ from kist.core.config import (
 )
 from kist.models.config import LibraryConfig
 from kist.tui.modals.settings import SettingsModal
-from kist.tui.themes import KIST_DARK
+from kist.tui.themes import NULL_THEME
 
 
 class SettingsApp(App):
     CSS = ""
 
     def on_mount(self) -> None:
-        self.register_theme(KIST_DARK)
-        self.theme = "kist-dark"
+        self.register_theme(NULL_THEME)
+        self.theme = "null"
 
 
 @pytest.fixture(autouse=True)
@@ -58,7 +58,7 @@ async def test_cancel_reverts_theme():
         assert app.theme == "dracula"
         await pilot.press("escape")
         await pilot.pause()
-        assert app.theme == "kist-dark"
+        assert app.theme == "null"
 
 
 async def test_library_fields_save(library_path):

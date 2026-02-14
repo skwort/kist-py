@@ -13,7 +13,7 @@ from textual.screen import Screen
 from kist.core.config import load_global_config
 from kist.core.library import find_library
 from kist.errors import LibraryNotFoundError
-from kist.tui.themes import KIST_DARK
+from kist.tui.themes import NULL_THEME
 
 
 class KistApp(App):
@@ -43,13 +43,13 @@ class KistApp(App):
         return BrowseScreen()
 
     def on_mount(self) -> None:
-        self.register_theme(KIST_DARK)
+        self.register_theme(NULL_THEME)
         # Apply saved theme from global config
         global_cfg = load_global_config()
         if global_cfg.theme in self.available_themes:
             self.theme = global_cfg.theme
         else:
-            self.theme = "kist-dark"
+            self.theme = "null"
         self._discover_library()
         if self._start_screen == "add":
             from kist.tui.screens.add import AddScreen

@@ -58,9 +58,9 @@ async def test_quit_from_browse(app):
         assert app._exit
 
 
-async def test_kist_dark_theme_registered(app):
+async def test_null_theme_registered(app):
     async with app.run_test():
-        assert "kist-dark" in app.available_themes
+        assert "null" in app.available_themes
 
 
 async def test_library_path_none_outside_library(app, tmp_path, monkeypatch):

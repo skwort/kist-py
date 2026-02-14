@@ -63,7 +63,7 @@ class ProvidersConfig(BaseModel):
 class GlobalConfig(BaseModel):
     """User-level defaults. All fields optional with built-in defaults."""
 
-    theme: str = "kist-dark"
+    theme: str = "null"
     symbols_dir: str = "symbols"
     footprints_dir: str = "footprints"
     models_dir: str = "3dmodels"

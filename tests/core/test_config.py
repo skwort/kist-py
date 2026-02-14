@@ -52,7 +52,7 @@ def test_load_global_config_invalid_toml(tmp_path, monkeypatch):
 
 def test_global_config_theme_default():
     cfg = GlobalConfig()
-    assert cfg.theme == "kist-dark"
+    assert cfg.theme == "null"
 
 
 # --- save_global_config ---

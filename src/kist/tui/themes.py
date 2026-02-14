@@ -2,8 +2,8 @@
 
 from textual.theme import Theme
 
-KIST_DARK = Theme(
-    name="kist-dark",
+NULL_THEME = Theme(
+    name="null",
     primary="#55aaff",
     secondary="#555555",
     warning="#cdcd55",
