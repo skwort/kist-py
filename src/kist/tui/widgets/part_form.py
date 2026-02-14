@@ -115,6 +115,16 @@ class PartForm(Static):
 
     def _compose_general(self) -> ComposeResult:
         with Vertical(classes="section", id="section-general"):
+            # Name (always read-only -- auto-generated from other fields)
+            with Horizontal(classes="form-field"):
+                yield Label("Name", classes="field-label")
+                yield Label("", id="part-name-ro", classes="field-value-ro")
+                yield Input(
+                    id="part-name",
+                    classes="field-value",
+                    placeholder="Auto-generated",
+                    disabled=True,
+                )
             with Horizontal(classes="form-field"):
                 yield Label("Tier", classes="field-label")
                 yield Label("", id="tier-ro", classes="field-value-ro")
@@ -177,10 +187,6 @@ class PartForm(Static):
                     classes="field-value",
                     prompt="Select mounting",
                 )
-            # Name (always read-only)
-            with Horizontal(classes="form-field"):
-                yield Label("Name", classes="field-label")
-                yield Label("", id="part-name-ro", classes="field-value-ro")
             with Horizontal(classes="form-field"):
                 yield Label("Description", classes="field-label")
                 yield Label("", id="description-ro", classes="field-value-ro")
@@ -298,6 +304,7 @@ class PartForm(Static):
         ("base-pn-ro", "base-pn"),
         ("package-ro", "package"),
         ("mounting-ro", "mounting"),
+        ("part-name-ro", "part-name"),
         ("description-ro", "description"),
         ("tags-ro", "tags"),
         ("symbol-ro", "symbol"),
@@ -554,6 +561,7 @@ class PartForm(Static):
             self.query_one("#mounting-ro", Label).update(part.mounting.value)
 
         self.query_one("#part-name-ro", Label).update(part.name)
+        self.query_one("#part-name", Input).value = part.name
 
         self.query_one("#description", Input).value = part.description
         self.query_one("#description-ro", Label).update(part.description)
@@ -673,8 +681,9 @@ class PartForm(Static):
         # Notes
         self.query_one("#notes", TextArea).text = ""
 
-        # Generated name label
+        # Generated name
         self.query_one("#part-name-ro", Label).update("")
+        self.query_one("#part-name", Input).value = ""
 
         # Tables
         self.query_one("#specs-table", DataTable).clear()
