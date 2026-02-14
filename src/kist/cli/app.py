@@ -109,12 +109,12 @@ def search(
     from kist.errors import LibraryNotFoundError
 
     try:
-        library_root = find_library()
+        result = find_library()
     except LibraryNotFoundError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from None
 
-    db = PartsDatabase(library_root / "parts.json")
+    db = PartsDatabase(result.library_root / "parts.json")
     db.load()
     results = db.search(query)
 
@@ -144,13 +144,13 @@ def check() -> None:
     from kist.errors import LibraryNotFoundError
 
     try:
-        library_root = find_library()
+        result = find_library()
     except LibraryNotFoundError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from None
 
-    config = load_library_config(library_root)
-    db = PartsDatabase(library_root / "parts.json")
+    config = load_library_config(result.library_root)
+    db = PartsDatabase(result.library_root / "parts.json")
     db.load()
 
     if not db.list_parts():

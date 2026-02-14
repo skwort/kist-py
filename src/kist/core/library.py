@@ -5,20 +5,30 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
+from typing import NamedTuple
 
 from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.core.config import (
     KIST_MARKER,
     PROJECT_REF,
+    load_library_config,
     load_project_ref,
     resolve_init_config,
     save_library_config,
     save_project_ref,
 )
 from kist.core.database import create_empty
-from kist.errors import LibraryExistsError, LibraryNotFoundError
+from kist.errors import ConfigError, LibraryExistsError, LibraryNotFoundError
 from kist.models.config import CategoryDef, ProjectRef
+
+
+class DiscoveryResult(NamedTuple):
+    """Result of library discovery, with optional project context."""
+
+    library_root: Path
+    project_dir: Path | None = None
 
 
 def init_library(
@@ -47,6 +57,7 @@ def init_library(
         models_dir=models_dir,
         blocks_dir=blocks_dir,
     )
+    config.library_id = str(uuid.uuid4())
     config.categories = (
         categories if categories is not None else dict(WELL_KNOWN_CATEGORIES)
     )
@@ -83,8 +94,12 @@ def link_library(target: Path, library: Path) -> Path:
     if ref_path.exists():
         raise LibraryExistsError(f"Already linked: {ref_path}")
 
+    lib_config = load_library_config(library)
     rel_path = str(os.path.relpath(library, target))
-    save_project_ref(ref_path, ProjectRef(library_path=rel_path))
+    save_project_ref(
+        ref_path,
+        ProjectRef(library_path=rel_path, library_id=lib_config.library_id),
+    )
 
     _create_lib_link(target / "lib", rel_path)
 
@@ -116,24 +131,31 @@ def _create_lib_link(link: Path, target: str) -> None:
         pass
 
 
-def find_library(start: Path | None = None) -> Path:
+def find_library(start: Path | None = None) -> DiscoveryResult:
     """
     Walk up from *start* to find the nearest kist library.
 
-    Returns the library root directory.
+    Returns a :class:`DiscoveryResult` with the library root and,
+    when discovered via a project reference (``kist.toml``), the
+    project directory.
+
+    When the library is found directly (via ``.kist/``), also checks
+    the parent directory for a ``kist.toml`` that points back to it,
+    so ``kist sync`` works from inside the library.
     """
     current = (start or Path.cwd()).resolve()
 
     while True:
         if (current / KIST_MARKER).is_dir():
-            return current
+            project_dir = _find_project_for_library(current)
+            return DiscoveryResult(current, project_dir)
 
         ref_path = current / PROJECT_REF
         if ref_path.is_file():
             ref = load_project_ref(ref_path)
             library = (current / ref.library_path).resolve()
             if (library / KIST_MARKER).is_dir():
-                return library
+                return DiscoveryResult(library, current)
             raise LibraryNotFoundError(
                 f"{ref_path} points to {ref.library_path}, "
                 f"but {library} is not a kist library."
@@ -141,10 +163,30 @@ def find_library(start: Path | None = None) -> Path:
 
         parent = current.parent
         if parent == current:
-            # Reached filesystem root (Path("/").parent == Path("/"))
             raise LibraryNotFoundError(
                 f"Not a kist library (or any parent up to {current}).\n"
                 "Run 'kist init' to create a new library, or\n"
                 "'kist link <path>' to link to an existing one."
             )
         current = parent
+
+
+def _find_project_for_library(library_root: Path) -> Path | None:
+    """
+    Check the parent directory for a ``kist.toml`` pointing to *library_root*.
+
+    Handles the single-board case where the library is at ``project/lib/``
+    and the project ref is at ``project/kist.toml``.
+    """
+    parent = library_root.parent
+    ref_path = parent / PROJECT_REF
+    if not ref_path.is_file():
+        return None
+    try:
+        ref = load_project_ref(ref_path)
+    except ConfigError:
+        return None
+    resolved = (parent / ref.library_path).resolve()
+    if resolved == library_root:
+        return parent
+    return None

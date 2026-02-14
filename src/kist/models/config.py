@@ -33,6 +33,7 @@ class LibraryConfig(BaseModel):
     """Per-library config, always has concrete values -- resolved at init time."""
 
     version: int = 1
+    library_id: str = ""
     library_prefix: str = "00k"
     separator: str = "-"
     symbols_dir: str = "symbols"
@@ -76,3 +77,4 @@ class ProjectRef(BaseModel):
 
     version: int = 1
     library_path: str
+    library_id: str = ""

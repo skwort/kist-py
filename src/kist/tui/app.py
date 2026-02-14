@@ -58,7 +58,8 @@ class KistApp(App):
 
     def _discover_library(self) -> None:
         try:
-            self.library_path = find_library()
+            result = find_library()
+            self.library_path = result.library_root
         except LibraryNotFoundError:
             self.library_path = None
 
