@@ -85,8 +85,9 @@ class AddScreen(Screen):
             self.notify(str(exc), severity="error")
             return
 
-        self.notify(f"Fetching {identifier} from {provider_name}...")
-        self.query_one("#part-form", PartForm).loading = True
+        form = self.query_one("#part-form", PartForm)
+        form.clear()
+        form.loading = True
         self._fetch_worker()
 
     @work(exclusive=True)
