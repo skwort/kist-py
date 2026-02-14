@@ -79,13 +79,6 @@ Screen {
     }
 }
 
-#loading-indicator {
-    width: 100%;
-    height: 1fr;
-    content-align: center middle;
-    text-opacity: 60%;
-}
-
 /* -- Compact form widgets (Posting-style) --- */
 
 PartForm {

@@ -10,7 +10,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import Footer, Input, Label, Static
+from textual.widgets import Footer, Input, Label
 
 from kist import __version__
 from kist.core.config import load_library_config
@@ -58,12 +58,10 @@ class AddScreen(Screen):
         with Horizontal(id="url-bar"):
             yield Label("URL / MPN", id="url-label")
             yield Input(id="url-input", placeholder="Paste supplier URL or enter MPN")
-        yield Static("", id="loading-indicator")
         yield PartForm(mode="editable", id="part-form")
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one("#loading-indicator").display = False
         if self._url_or_mpn:
             self.query_one("#url-input", Input).value = self._url_or_mpn
             self._start_fetch(self._url_or_mpn)
@@ -87,10 +85,8 @@ class AddScreen(Screen):
             self.notify(str(exc), severity="error")
             return
 
-        loading = self.query_one("#loading-indicator", Static)
-        loading.update(f"Fetching {identifier} from {provider_name}...")
-        self.query_one("#loading-indicator").display = True
-        self.query_one("#part-form").display = False
+        self.notify(f"Fetching {identifier} from {provider_name}...")
+        self.query_one("#part-form", PartForm).loading = True
         self._fetch_worker()
 
     @work(exclusive=True)
@@ -111,9 +107,8 @@ class AddScreen(Screen):
             form.load_from_provider(product)
 
     def _show_form(self) -> None:
-        """Hide loading indicator and restore the form."""
-        self.query_one("#loading-indicator").display = False
-        self.query_one("#part-form").display = True
+        """Clear loading state and restore the form."""
+        self.query_one("#part-form", PartForm).loading = False
 
     # -- Save ---
 
