@@ -24,15 +24,14 @@ class PartsTable(DataTable):
     Uses ``part.ipn`` as the row key for later detail-modal lookup.
     """
 
-    cursor_type = "row"
-    zebra_stripes = True
-
     BINDINGS = [
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
     ]
 
     def on_mount(self) -> None:
+        self.cursor_type = "row"
+        self.zebra_stripes = True
         self.add_columns("Name", "Value", "Package", "Tier", "Description")
 
     def populate(self, parts: list[Part]) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -12,8 +13,12 @@ from textual.screen import Screen
 from textual.widgets import Footer, Input, Static
 
 from kist import __version__
+
+if TYPE_CHECKING:
+    from kist.tui.app import KistApp
 from kist.core.database import PartsDatabase
-from kist.models.part import Part, ProprietaryPart, SemiJellybeanPart
+from kist.models.part import Ipn, Part, ProprietaryPart, SemiJellybeanPart
+from kist.tui.screens.detail import DetailModal
 from kist.tui.widgets.category_list import CategoryList
 from kist.tui.widgets.header import KistHeader
 from kist.tui.widgets.parts_table import PartsTable
@@ -164,7 +169,18 @@ class BrowseScreen(Screen):
             self._apply_filters()
 
     def on_data_table_row_selected(self, event: PartsTable.RowSelected) -> None:
-        self.notify(f"Selected: {event.row_key.value}", severity="information")
+        ipn = Ipn(str(event.row_key.value))
+        part = next((p for p in self._all_parts if p.ipn == ipn), None)
+        if part:
+            self.app.push_screen(
+                DetailModal(part),
+                callback=self._on_detail_closed,
+            )  # type: ignore[arg-type]
+
+    def _on_detail_closed(self, changed: bool | None) -> None:
+        app: KistApp = self.app  # type: ignore[assignment]
+        if changed:
+            self._on_library_changed(app.library_path)
 
     def action_focus_search(self) -> None:
         self.query_one("#search", Input).focus()

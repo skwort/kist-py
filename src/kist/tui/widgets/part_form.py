@@ -318,10 +318,17 @@ class PartForm(Static):
             self.query_one(f"#{ro_id}").display = not editable
             self.query_one(f"#{rw_id}").display = editable
 
-        self.query_one("#notes", TextArea).disabled = not editable
+        notes = self.query_one("#notes", TextArea)
+        notes.disabled = not editable
+        notes.can_focus = editable
+
         # Action buttons hidden in readonly
         self.query_one("#specs-actions").display = editable
         self.query_one("#suppliers-actions").display = editable
+
+        # DataTables only need focus in editable mode
+        self.query_one("#specs-table", DataTable).can_focus = editable
+        self.query_one("#suppliers-table", DataTable).can_focus = editable
 
     # -- Tier visibility ---
 
@@ -421,7 +428,7 @@ class PartForm(Static):
         empty = table.row_count == 0
         self.query_one("#specs-empty").display = empty
         table.display = not empty
-        table.can_focus = not empty
+        table.can_focus = not empty and self._mode == "editable"
 
     # -- Supplier management ---
 
@@ -451,7 +458,7 @@ class PartForm(Static):
         empty = table.row_count == 0
         self.query_one("#suppliers-empty").display = empty
         table.display = not empty
-        table.can_focus = not empty
+        table.can_focus = not empty and self._mode == "editable"
 
     # -- Data flow ---
 

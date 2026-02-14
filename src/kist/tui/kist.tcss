@@ -273,3 +273,19 @@ PartForm {
     }
 }
 
+/* -- Detail modal --- */
+
+DetailModal {
+    align: center middle;
+}
+
+#detail-container {
+    width: 90%;
+    height: 90%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $surface;
+    padding: 0 1;
+}
+
