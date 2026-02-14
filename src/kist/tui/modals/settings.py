@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from textual import getters
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -16,15 +17,16 @@ from kist.core.config import (
     save_global_config,
     save_library_config,
 )
+from kist.tui.app import KistApp
 
 
 def _theme_options() -> list[tuple[str, str]]:
     """Build select options from Textual's registered themes."""
-    # Textual ships built-in themes; we add kist-dark alongside them.
+    # Textual ships built-in themes; we add null alongside them.
     # The full list is discovered at runtime from the app, but for the
     # select widget we use a curated list of well-known themes.
     return [
-        ("kist-dark", "kist-dark"),
+        ("null", "null"),
         ("textual-dark", "textual-dark"),
         ("textual-light", "textual-light"),
         ("nord", "nord"),
@@ -46,6 +48,8 @@ class SettingsModal(ModalScreen):
     Theme changes apply immediately as a live preview. Cancel reverts
     the theme to its previous value.
     """
+
+    app = getters.app(KistApp)
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
@@ -125,7 +129,7 @@ class SettingsModal(ModalScreen):
         self.query_one("#section-appearance").border_title = "Appearance"
 
         # Load current values
-        self._previous_theme = self.app.theme or "kist-dark"
+        self._previous_theme = self.app.theme or "null"
         global_cfg = load_global_config()
         self.query_one("#setting-theme", Select).value = global_cfg.theme
 
@@ -193,7 +197,7 @@ class SettingsModal(ModalScreen):
             ).value.strip()
             save_library_config(self._library_path, lib_cfg)
 
-        self._previous_theme = self.app.theme or "kist-dark"
+        self._previous_theme = self.app.theme or "null"
         self.dismiss()
 
     def action_cancel(self) -> None:

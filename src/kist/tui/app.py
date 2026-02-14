@@ -10,9 +10,16 @@ from textual.content import Content
 from textual.reactive import reactive
 from textual.screen import Screen
 
+from kist.core.check import check_library
 from kist.core.config import load_global_config
+from kist.core.config import load_library_config as _load_library_config
+from kist.core.config import save_library_config as _save_library_config
+from kist.core.database import PartsDatabase
 from kist.core.library import find_library
+from kist.core.sync import sync_symbols
 from kist.errors import LibraryNotFoundError
+from kist.models.config import LibraryConfig
+from kist.models.part import Ipn, Part
 from kist.tui.themes import NULL_THEME
 
 
@@ -27,6 +34,8 @@ class KistApp(App):
     ]
 
     library_path: reactive[Path | None] = reactive(None)
+    library_config: reactive[LibraryConfig | None] = reactive(None)
+    parts_version: reactive[int] = reactive(0)
 
     def __init__(
         self,
@@ -60,8 +69,43 @@ class KistApp(App):
         try:
             result = find_library()
             self.library_path = result.library_root
+            self.library_config = _load_library_config(result.library_root)
         except LibraryNotFoundError:
             self.library_path = None
+            self.library_config = None
+
+    # -- Mutation methods ---
+
+    def save_part(self, part: Part, replacing: Ipn | None = None) -> None:
+        """Persist a part and run the post-mutation pipeline."""
+        assert self.library_path is not None
+        db = PartsDatabase(self.library_path / "parts.json")
+        db.load()
+        if replacing:
+            db.remove(replacing)
+        db.add(part)
+        self._after_mutation(db)
+
+    def delete_part(self, ipn: Ipn) -> None:
+        """Remove a part and run the post-mutation pipeline."""
+        assert self.library_path is not None
+        db = PartsDatabase(self.library_path / "parts.json")
+        db.load()
+        db.remove(ipn)
+        self._after_mutation(db)
+
+    def update_library_config(self, config: LibraryConfig) -> None:
+        """Save library config to disk and update the reactive attribute."""
+        assert self.library_path is not None
+        _save_library_config(self.library_path, config)
+        self.library_config = config
+
+    def _after_mutation(self, db: PartsDatabase) -> None:
+        """Post-mutation side effects: sync, UI refresh."""
+        assert self.library_path is not None
+        if self.library_config:
+            sync_symbols(self.library_path, db, self.library_config)
+        self.parts_version += 1
 
     def format_title(self, title: str, sub_title: str) -> Content:
         """
@@ -123,30 +167,21 @@ class KistApp(App):
             self.push_screen(CategoryManagerModal(self.library_path))
 
     def _run_check(self) -> None:
-        from kist.core.check import check_library
-        from kist.core.config import load_library_config
-        from kist.core.database import PartsDatabase
         from kist.tui.modals.check import LibraryCheckModal
 
-        if not self.library_path:
+        if not self.library_path or not self.library_config:
             return
-        config = load_library_config(self.library_path)
         db = PartsDatabase(self.library_path / "parts.json")
         db.load()
-        issues = check_library(db, config)
+        issues = check_library(db, self.library_config)
         self.push_screen(LibraryCheckModal(issues))
 
     def _run_sync(self) -> None:
-        from kist.core.config import load_library_config
-        from kist.core.database import PartsDatabase
-        from kist.core.sync import sync_symbols
-
-        if not self.library_path:
+        if not self.library_path or not self.library_config:
             return
-        config = load_library_config(self.library_path)
         db = PartsDatabase(self.library_path / "parts.json")
         db.load()
-        sync_symbols(self.library_path, db, config)
+        sync_symbols(self.library_path, db, self.library_config)
         count = len(db.list_parts())
         self.notify(f"Synced {count} part{'s' if count != 1 else ''} to KiCad")
 

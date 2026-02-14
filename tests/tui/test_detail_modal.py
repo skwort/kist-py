@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from textual.app import App
-from textual.reactive import reactive
 from textual.widgets import Input, Label
 
+from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
 from kist.core.library import init_library
 from kist.models.part import Mounting, ProprietaryPart, Tier
+from kist.tui.app import KistApp
 from kist.tui.screens.browse import BrowseScreen
 from kist.tui.screens.detail import ConfirmModal, DetailModal
 from kist.tui.widgets.part_form import PartForm
@@ -35,21 +35,23 @@ def _make_proprietary_part() -> ProprietaryPart:
     )
 
 
-class BrowseApp(App):
+class BrowseApp(KistApp):
     """Minimal app for testing browse + detail modal integration."""
 
+    CSS_PATH = None
     CSS = ""
-    library_path: reactive[Path | None] = reactive(None)
 
     def __init__(self, library_path: Path | None = None) -> None:
         super().__init__()
-        self._library_path = library_path
+        self._test_library_path = library_path
 
     def get_default_screen(self) -> BrowseScreen:
         return BrowseScreen()
 
-    def on_mount(self) -> None:
-        self.library_path = self._library_path
+    def _discover_library(self) -> None:
+        if self._test_library_path:
+            self.library_path = self._test_library_path
+            self.library_config = load_library_config(self._test_library_path)
 
 
 @pytest.fixture

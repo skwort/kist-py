@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 
-from textual import work
+from textual import getters, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -17,15 +16,15 @@ from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
 from kist.errors import DuplicatePartError, ProviderError
 from kist.providers import detect_provider, fetch_product
+from kist.tui.app import KistApp
 from kist.tui.save import ValidationNotice, build_part_from_form
 from kist.tui.widgets.header import KistHeader
 from kist.tui.widgets.part_form import PartForm
 
-if TYPE_CHECKING:
-    from kist.tui.app import KistApp
-
 
 class AddScreen(Screen):
+    app = getters.app(KistApp)
+
     """Full-screen form for adding a new part."""
 
     TITLE = "Kist"
@@ -111,8 +110,7 @@ class AddScreen(Screen):
         form = self.query_one("#part-form", PartForm)
         d = form.to_dict()
 
-        app: KistApp = self.app  # type: ignore[assignment]
-        library_path = app.library_path
+        library_path = self.app.library_path
         if not library_path:
             self.notify("No library found -- run kist init first", severity="error")
             return

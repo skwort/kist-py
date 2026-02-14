@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from textual import getters
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -13,6 +14,7 @@ from textual.widgets import Button, DataTable, Input, Label, Select
 from kist.core.config import load_library_config, save_library_config
 from kist.core.database import PartsDatabase
 from kist.models.config import CategoryDef
+from kist.tui.app import KistApp
 
 # Symbol templates that ship with kist
 TEMPLATE_OPTIONS: list[tuple[str, str]] = [
@@ -238,6 +240,8 @@ class CategoryManagerModal(ModalScreen):
 
     Changes are saved immediately to ``.kist/config.toml``.
     """
+
+    app = getters.app(KistApp)
 
     BINDINGS = [
         Binding("escape", "close", "Close"),

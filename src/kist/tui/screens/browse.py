@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+from textual import getters
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -13,11 +13,9 @@ from textual.screen import Screen
 from textual.widgets import Footer, Input, Static
 
 from kist import __version__
-
-if TYPE_CHECKING:
-    from kist.tui.app import KistApp
 from kist.core.database import PartsDatabase
 from kist.models.part import Ipn, Part, ProprietaryPart, SemiJellybeanPart
+from kist.tui.app import KistApp
 from kist.tui.screens.detail import DetailModal
 from kist.tui.widgets.category_list import CategoryList
 from kist.tui.widgets.header import KistHeader
@@ -39,6 +37,8 @@ EMPTY_LIBRARY_TEXT = (
 
 class BrowseScreen(Screen):
     """Main screen showing the parts library."""
+
+    app = getters.app(KistApp)
 
     TITLE = "Kist"
     SUB_TITLE = f"v{__version__}"
@@ -178,9 +178,8 @@ class BrowseScreen(Screen):
             )
 
     def _on_detail_closed(self, changed: bool | None) -> None:
-        app: KistApp = self.app  # type: ignore[assignment]
         if changed:
-            self._on_library_changed(app.library_path)
+            self._on_library_changed(self.app.library_path)
 
     def action_focus_search(self) -> None:
         self.query_one("#search", Input).focus()

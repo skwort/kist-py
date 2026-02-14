@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+from textual import getters
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -13,14 +12,14 @@ from textual.widgets import Button, Footer, Static
 from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
 from kist.models.part import Part
+from kist.tui.app import KistApp
 from kist.tui.save import ValidationNotice, build_part_from_form
 from kist.tui.widgets.part_form import PartForm
 
-if TYPE_CHECKING:
-    from kist.tui.app import KistApp
-
 
 class DetailModal(ModalScreen[bool]):
+    app = getters.app(KistApp)
+
     """
     Modal showing full part details in PartForm readonly mode.
 
@@ -84,8 +83,7 @@ class DetailModal(ModalScreen[bool]):
         if form.mode != "editable":
             return
 
-        app: KistApp = self.app  # type: ignore[assignment]
-        library_path = app.library_path
+        library_path = self.app.library_path
         if not library_path:
             self.notify("No library found", severity="error")
             return
@@ -131,8 +129,7 @@ class DetailModal(ModalScreen[bool]):
         if not confirmed:
             return
 
-        app: KistApp = self.app  # type: ignore[assignment]
-        library_path = app.library_path
+        library_path = self.app.library_path
         if not library_path:
             return
 

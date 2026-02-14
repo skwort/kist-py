@@ -1,16 +1,17 @@
 """CategoryFormModal and CategoryManagerModal tests."""
 
 import pytest
-from textual.app import App
 from textual.widgets import DataTable, Input, Select
 
 from kist.core.config import load_library_config, save_library_config
 from kist.core.database import create_empty
 from kist.models.config import CategoryDef, LibraryConfig
+from kist.tui.app import KistApp
 from kist.tui.modals.categories import CategoryFormModal, CategoryManagerModal
 
 
-class ModalApp(App):
+class ModalApp(KistApp):
+    CSS_PATH = None
     CSS = ""
 
 

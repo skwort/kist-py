@@ -5,23 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from textual.app import App
-from textual.reactive import reactive
 from textual.widgets import Input, Select
 
+from kist.core.config import load_library_config
 from kist.core.database import PartsDatabase
 from kist.core.library import init_library
 from kist.models.part import Mounting, ProprietaryPart, Tier
 from kist.providers.models import ProviderProduct
+from kist.tui.app import KistApp
 from kist.tui.screens.add import AddScreen
 from kist.tui.widgets.part_form import PartForm
 
 
-class AddScreenApp(App):
+class AddScreenApp(KistApp):
     """Minimal app for testing AddScreen in isolation."""
 
+    CSS_PATH = None
     CSS = ""
-    library_path: reactive[Path | None] = reactive(None)
 
     def __init__(
         self,
@@ -29,14 +29,16 @@ class AddScreenApp(App):
         url_or_mpn: str | None = None,
     ) -> None:
         super().__init__()
-        self._library_path = library_path
-        self._url_or_mpn = url_or_mpn
+        self._test_library_path = library_path
+        self._url_or_mpn_arg = url_or_mpn
 
     def get_default_screen(self) -> AddScreen:
-        return AddScreen(url_or_mpn=self._url_or_mpn)
+        return AddScreen(url_or_mpn=self._url_or_mpn_arg)
 
-    def on_mount(self) -> None:
-        self.library_path = self._library_path
+    def _discover_library(self) -> None:
+        if self._test_library_path:
+            self.library_path = self._test_library_path
+            self.library_config = load_library_config(self._test_library_path)
 
 
 @pytest.fixture

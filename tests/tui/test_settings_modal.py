@@ -1,7 +1,6 @@
 """SettingsModal tests -- theme persistence, library fields."""
 
 import pytest
-from textual.app import App
 from textual.widgets import Input, Select
 
 from kist.core.config import (
@@ -10,16 +9,13 @@ from kist.core.config import (
     save_library_config,
 )
 from kist.models.config import LibraryConfig
+from kist.tui.app import KistApp
 from kist.tui.modals.settings import SettingsModal
-from kist.tui.themes import NULL_THEME
 
 
-class SettingsApp(App):
+class SettingsApp(KistApp):
+    CSS_PATH = None
     CSS = ""
-
-    def on_mount(self) -> None:
-        self.register_theme(NULL_THEME)
-        self.theme = "null"
 
 
 @pytest.fixture(autouse=True)
