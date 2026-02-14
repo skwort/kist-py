@@ -10,6 +10,7 @@ from textual.content import Content
 from textual.reactive import reactive
 from textual.screen import Screen
 
+from kist.core.config import load_global_config
 from kist.core.library import find_library
 from kist.errors import LibraryNotFoundError
 from kist.tui.themes import KIST_DARK
@@ -43,7 +44,12 @@ class KistApp(App):
 
     def on_mount(self) -> None:
         self.register_theme(KIST_DARK)
-        self.theme = "kist-dark"
+        # Apply saved theme from global config
+        global_cfg = load_global_config()
+        if global_cfg.theme in self.available_themes:
+            self.theme = global_cfg.theme
+        else:
+            self.theme = "kist-dark"
         self._discover_library()
         if self._start_screen == "add":
             from kist.tui.screens.add import AddScreen
@@ -75,11 +81,73 @@ class KistApp(App):
             "Add a new part to the library",
             self._push_add_screen,
         )
+        yield SystemCommand(
+            "Settings",
+            "Open settings",
+            self._push_settings,
+        )
+        if self.library_path:
+            yield SystemCommand(
+                "Sync to KiCad",
+                "Push parts database to .kicad_sym files",
+                self._run_sync,
+            )
+            yield SystemCommand(
+                "Check library",
+                "Validate part names and check for duplicates",
+                self._run_check,
+            )
+            yield SystemCommand(
+                "Manage categories",
+                "Add, edit, or delete category definitions",
+                self._push_category_manager,
+            )
+
+    # -- Command handlers ---
 
     def _push_add_screen(self) -> None:
         from kist.tui.screens.add import AddScreen
 
         self.push_screen(AddScreen())
+
+    def _push_settings(self) -> None:
+        from kist.tui.modals.settings import SettingsModal
+
+        self.push_screen(SettingsModal(self.library_path))
+
+    def _push_category_manager(self) -> None:
+        from kist.tui.modals.categories import CategoryManagerModal
+
+        if self.library_path:
+            self.push_screen(CategoryManagerModal(self.library_path))
+
+    def _run_check(self) -> None:
+        from kist.core.check import check_library
+        from kist.core.config import load_library_config
+        from kist.core.database import PartsDatabase
+        from kist.tui.modals.check import LibraryCheckModal
+
+        if not self.library_path:
+            return
+        config = load_library_config(self.library_path)
+        db = PartsDatabase(self.library_path / "parts.json")
+        db.load()
+        issues = check_library(db, config)
+        self.push_screen(LibraryCheckModal(issues))
+
+    def _run_sync(self) -> None:
+        from kist.core.config import load_library_config
+        from kist.core.database import PartsDatabase
+        from kist.core.sync import sync_symbols
+
+        if not self.library_path:
+            return
+        config = load_library_config(self.library_path)
+        db = PartsDatabase(self.library_path / "parts.json")
+        db.load()
+        sync_symbols(self.library_path, db, config)
+        count = len(db.list_parts())
+        self.notify(f"Synced {count} part{'s' if count != 1 else ''} to KiCad")
 
 
 def run_tui(

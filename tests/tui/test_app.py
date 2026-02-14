@@ -2,9 +2,16 @@
 
 import pytest
 
+from kist.core.config import save_global_config
+from kist.models.config import GlobalConfig
 from kist.tui.app import KistApp
 from kist.tui.screens.add import AddScreen
 from kist.tui.screens.browse import BrowseScreen
+
+
+@pytest.fixture(autouse=True)
+def _isolate_config(monkeypatch, tmp_path):
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(tmp_path / "config"))
 
 
 @pytest.fixture
@@ -67,3 +74,44 @@ async def test_add_part_in_system_commands(app):
         commands = list(app.get_system_commands(app.screen))
         titles = [c.title for c in commands]
         assert "Add part" in titles
+
+
+async def test_settings_always_in_system_commands(app):
+    async with app.run_test():
+        commands = list(app.get_system_commands(app.screen))
+        titles = [c.title for c in commands]
+        assert "Settings" in titles
+
+
+async def test_library_commands_hidden_without_library(app, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    async with app.run_test():
+        assert app.library_path is None
+        commands = list(app.get_system_commands(app.screen))
+        titles = [c.title for c in commands]
+        assert "Sync to KiCad" not in titles
+        assert "Check library" not in titles
+        assert "Manage categories" not in titles
+
+
+async def test_library_commands_present_with_library(tmp_path, monkeypatch):
+    from kist.core.library import init_library
+
+    init_library(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    app = KistApp()
+    async with app.run_test():
+        assert app.library_path is not None
+        commands = list(app.get_system_commands(app.screen))
+        titles = [c.title for c in commands]
+        assert "Sync to KiCad" in titles
+        assert "Check library" in titles
+        assert "Manage categories" in titles
+
+
+async def test_saved_theme_applied_on_startup(tmp_path, monkeypatch):
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(tmp_path / "cfg"))
+    save_global_config(GlobalConfig(theme="nord"))
+    app = KistApp()
+    async with app.run_test():
+        assert app.theme == "nord"
