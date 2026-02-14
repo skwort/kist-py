@@ -11,7 +11,6 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Label, Select
 
-from kist.core.config import load_library_config, save_library_config
 from kist.core.database import PartsDatabase
 from kist.models.config import CategoryDef
 from kist.tui.app import KistApp
@@ -270,7 +269,9 @@ class CategoryManagerModal(ModalScreen):
         """Reload category data from the library config."""
         table = self.query_one("#catmgr-table", DataTable)
         table.clear()
-        config = load_library_config(self._library_path)
+        config = self.app.library_config
+        if config is None:
+            return
         for code, cat in config.categories.items():
             specs = ", ".join(cat.key_specs) if cat.key_specs else ""
             template = cat.symbol_template or ""
@@ -296,7 +297,9 @@ class CategoryManagerModal(ModalScreen):
         code = self._selected_code()
         if not code:
             return
-        config = load_library_config(self._library_path)
+        config = self.app.library_config
+        if config is None:
+            return
         cat = config.categories.get(code)
         if not cat:
             return
@@ -309,9 +312,11 @@ class CategoryManagerModal(ModalScreen):
         if result is None:
             return
         code, cat_def = result
-        config = load_library_config(self._library_path)
+        config = self.app.library_config
+        if config is None:
+            return
         config.categories[code] = cat_def
-        save_library_config(self._library_path, config)
+        self.app.update_library_config(config)
         self._reload_table()
 
     def action_delete(self) -> None:
@@ -338,9 +343,11 @@ class CategoryManagerModal(ModalScreen):
     def _on_delete_confirmed(self, confirmed: bool | None, code: str) -> None:
         if not confirmed:
             return
-        config = load_library_config(self._library_path)
+        config = self.app.library_config
+        if config is None:
+            return
         config.categories.pop(code, None)
-        save_library_config(self._library_path, config)
+        self.app.update_library_config(config)
         self._reload_table()
 
     def action_close(self) -> None:

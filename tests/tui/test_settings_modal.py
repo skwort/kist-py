@@ -17,6 +17,15 @@ class SettingsApp(KistApp):
     CSS_PATH = None
     CSS = ""
 
+    def __init__(self, library_path=None):
+        super().__init__()
+        self._test_library_path = library_path
+
+    def _discover_library(self):
+        if self._test_library_path:
+            self.library_path = self._test_library_path
+            self.library_config = load_library_config(self._test_library_path)
+
 
 @pytest.fixture(autouse=True)
 def _isolate_config(monkeypatch, tmp_path):
@@ -32,7 +41,7 @@ def library_path(tmp_path):
 
 
 async def test_theme_change_persists(library_path):
-    app = SettingsApp()
+    app = SettingsApp(library_path)
     async with app.run_test() as pilot:
         await app.push_screen(SettingsModal(library_path))
         app.screen.query_one("#setting-theme", Select).value = "nord"
@@ -58,7 +67,7 @@ async def test_cancel_reverts_theme():
 
 
 async def test_library_fields_save(library_path):
-    app = SettingsApp()
+    app = SettingsApp(library_path)
     async with app.run_test() as pilot:
         await app.push_screen(SettingsModal(library_path))
         app.screen.query_one("#setting-prefix", Input).value = "xyz"

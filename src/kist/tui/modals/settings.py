@@ -11,12 +11,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select
 
-from kist.core.config import (
-    load_global_config,
-    load_library_config,
-    save_global_config,
-    save_library_config,
-)
+from kist.core.config import load_global_config, save_global_config
 from kist.tui.app import KistApp
 
 
@@ -133,11 +128,11 @@ class SettingsModal(ModalScreen):
         global_cfg = load_global_config()
         self.query_one("#setting-theme", Select).value = global_cfg.theme
 
-        if self._library_path is not None:
+        lib_cfg = self.app.library_config
+        if self._library_path is not None and lib_cfg is not None:
             self.query_one("#section-library").border_title = "Library"
             self.query_one("#section-directories").border_title = "Directories"
 
-            lib_cfg = load_library_config(self._library_path)
             self.query_one("#setting-prefix", Input).value = lib_cfg.library_prefix
             self.query_one("#setting-separator", Input).value = lib_cfg.separator
             self.query_one("#setting-suppliers", Input).value = ", ".join(
@@ -174,8 +169,8 @@ class SettingsModal(ModalScreen):
         save_global_config(global_cfg)
 
         # Save library fields if a library is open
-        if self._library_path is not None:
-            lib_cfg = load_library_config(self._library_path)
+        lib_cfg = self.app.library_config
+        if self._library_path is not None and lib_cfg is not None:
             lib_cfg.library_prefix = self.query_one(
                 "#setting-prefix", Input
             ).value.strip()
@@ -195,7 +190,7 @@ class SettingsModal(ModalScreen):
             lib_cfg.models_dir = self.query_one(
                 "#setting-models-dir", Input
             ).value.strip()
-            save_library_config(self._library_path, lib_cfg)
+            self.app.update_library_config(lib_cfg)
 
         self._previous_theme = self.app.theme or "null"
         self.dismiss()

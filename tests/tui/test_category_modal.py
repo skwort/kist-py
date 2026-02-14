@@ -14,6 +14,15 @@ class ModalApp(KistApp):
     CSS_PATH = None
     CSS = ""
 
+    def __init__(self, library_path=None):
+        super().__init__()
+        self._test_library_path = library_path
+
+    def _discover_library(self):
+        if self._test_library_path:
+            self.library_path = self._test_library_path
+            self.library_config = load_library_config(self._test_library_path)
+
 
 # -- CategoryFormModal ---
 
@@ -116,7 +125,7 @@ def library_path(tmp_path):
 
 
 async def test_manager_loads_categories(library_path):
-    app = ModalApp()
+    app = ModalApp(library_path)
     async with app.run_test():
         await app.push_screen(CategoryManagerModal(library_path))
         table = app.screen.query_one("#catmgr-table", DataTable)
@@ -125,7 +134,7 @@ async def test_manager_loads_categories(library_path):
 
 async def test_manager_add_category(library_path):
     """Add via the form modal persists to config."""
-    app = ModalApp()
+    app = ModalApp(library_path)
     async with app.run_test() as pilot:
         await app.push_screen(CategoryManagerModal(library_path))
         await pilot.press("a")
@@ -146,7 +155,7 @@ async def test_manager_add_category(library_path):
 
 async def test_manager_edit_category(library_path):
     """Edit updates the category in config."""
-    app = ModalApp()
+    app = ModalApp(library_path)
     async with app.run_test() as pilot:
         await app.push_screen(CategoryManagerModal(library_path))
         # Select first row (RES) and edit
@@ -162,7 +171,7 @@ async def test_manager_edit_category(library_path):
 
 async def test_manager_delete_category(library_path):
     """Delete removes category from config."""
-    app = ModalApp()
+    app = ModalApp(library_path)
     async with app.run_test() as pilot:
         await app.push_screen(CategoryManagerModal(library_path))
         await pilot.press("d")
