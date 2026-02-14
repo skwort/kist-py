@@ -22,8 +22,8 @@ REQUEST_TIMEOUT = 30  # seconds
 # The target name determines how the parameter is routed:
 #   "package"      --> ProviderProduct.package  (top-level field)
 #   "mounting"     --> ProviderProduct.mounting  (top-level field)
-#   in ignore list --> dropped
-#   anything else  --> ProviderProduct.parameters[target]
+#   mapped target  --> ProviderProduct.parameters[target]
+#   not in map     --> dropped (whitelist approach)
 #
 # Methodology: extracted by fetching 86 products across two real BOMs via
 # the DigiKey v4 API, then analysing parameter frequency and usefulness.
@@ -85,27 +85,6 @@ PARAMETER_MAP: dict[str, str] = {
     # -- Misc -------------------------------------------------------------------
     "Color": "colour",
 }
-
-# -- Ignored parameters --------------------------------------------------------
-# Parameters dropped entirely after name normalisation.  These are either
-# boilerplate (present on nearly every product) or physical dimensions that
-# don't help with part selection.
-
-IGNORE_PARAMETERS: list[str] = [
-    "Operating Temperature",
-    "Features",
-    "Supplier Device Package",
-    "Size / Dimension",
-    "Height - Seated (Max)",
-    "Ratings",
-    "Failure Rate",
-    "Applications",
-    "Thickness (Max)",
-    "Lead Spacing",
-    "Lead Style",
-    "Number of Terminations",
-    "DigiKey Programmable",
-]
 
 # -- Category mapping -------------------------------------------------------
 # Best-effort mapping from DigiKey category names to kist category codes.
@@ -193,10 +172,6 @@ MOUNTING_MAP: dict[str, str] = {
     "Surface Mount, Right Angle; Through Hole": "tht",
 }
 
-# Target names that route to top-level ProviderProduct fields
-# instead of the parameters dict.
-_EXTRACT_FIELDS = frozenset({"package", "mounting"})
-
 
 def default_mapping() -> ProviderMappingConfig:
     """Return built-in DigiKey mapping defaults."""
@@ -204,7 +179,6 @@ def default_mapping() -> ProviderMappingConfig:
         supplier_name="DigiKey",
         categories=dict(CATEGORY_MAP),
         parameters=dict(PARAMETER_MAP),
-        ignore_parameters=list(IGNORE_PARAMETERS),
         mounting=dict(MOUNTING_MAP),
     )
 
@@ -264,13 +238,11 @@ def _map_product(
     description_obj = product.get("Description", {})
     manufacturer_obj = product.get("Manufacturer", {})
 
-    ignore = set(mapping.ignore_parameters)
-
     # Pipeline: normalise parameter names, then route.
     #   "package"      --> product.package
     #   "mounting"     --> product.mounting (value normalised via mapping.mounting)
-    #   in ignore set  --> dropped
-    #   anything else  --> product.parameters[target]
+    #   mapped target  --> product.parameters[target]
+    #   not in map     --> dropped (whitelist approach)
     parameters: dict[str, str] = {}
     package: str | None = None
     mounting: str | None = None
@@ -281,16 +253,16 @@ def _map_product(
         if not raw_name or not value:
             continue
 
-        # 1. Normalise name
-        target = mapping.parameters.get(raw_name, raw_name)
+        # Only keep parameters that are explicitly mapped
+        target = mapping.parameters.get(raw_name)
+        if target is None:
+            continue
 
-        # 2. Route
+        # Route to the right destination
         if target == "package":
             package = value
         elif target == "mounting":
             mounting = value
-        elif target in ignore:
-            continue
         else:
             parameters[target] = value
 

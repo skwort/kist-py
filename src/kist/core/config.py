@@ -125,8 +125,7 @@ def load_provider_mapping(provider_name: str) -> ProviderMappingConfig:
 
     If no TOML file exists, returns the provider's built-in defaults.
     Dict fields (categories, parameters, mounting) are merged key-by-key.
-    List fields (ignore_parameters) and scalars are replaced entirely
-    if present in the TOML.
+    Scalars are replaced entirely if present in the TOML.
     """
     # Load built-in defaults from the provider module
     module_path = _PROVIDER_DEFAULTS.get(provider_name)

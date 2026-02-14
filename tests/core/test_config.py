@@ -212,18 +212,16 @@ def test_provider_mapping_extends_defaults(tmp_path, monkeypatch):
     assert mapping.parameters["Resistance"] == "resistance"
 
 
-def test_provider_mapping_replaces_list_fields(tmp_path, monkeypatch):
-    """List fields in TOML replace the defaults entirely."""
+def test_provider_mapping_replaces_scalar_fields(tmp_path, monkeypatch):
+    """Scalar fields in TOML replace the defaults entirely."""
     config_dir = tmp_path / "cfg"
     config_dir.mkdir()
     monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
     providers_dir = config_dir / "providers"
     providers_dir.mkdir()
-    (providers_dir / "digikey.toml").write_text(
-        'ignore_parameters = ["Power (Watts)"]\n'
-    )
+    (providers_dir / "digikey.toml").write_text('supplier_name = "DK Custom"\n')
     mapping = load_provider_mapping("digikey")
-    assert mapping.ignore_parameters == ["Power (Watts)"]
+    assert mapping.supplier_name == "DK Custom"
 
 
 def test_provider_mapping_invalid_toml_raises(tmp_path, monkeypatch):

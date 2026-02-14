@@ -181,8 +181,8 @@ def test_map_known_parameters_renamed():
     assert result.parameters["composition"] == "Thick Film"
 
 
-def test_map_ignored_parameters_dropped():
-    """Parameters in the ignore list are dropped entirely."""
+def test_map_unmapped_parameters_dropped():
+    """Parameters not in the map are dropped (whitelist approach)."""
     result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
     assert "Number of Terminations" not in result.parameters
 
@@ -245,13 +245,13 @@ def test_map_extracted_params_excluded():
     assert "Mounting Type" not in result.parameters
 
 
-def test_map_ignored_params_excluded():
-    """Parameters in ignore_parameters are dropped entirely."""
+def test_map_removing_param_from_map_drops_it():
+    """Removing a parameter from the map causes it to be dropped."""
+    trimmed = {k: v for k, v in PARAMETER_MAP.items() if v != "resistance"}
     custom = ProviderMappingConfig(
         supplier_name="DigiKey",
         categories=dict(CATEGORY_MAP),
-        parameters=dict(PARAMETER_MAP),
-        ignore_parameters=["resistance"],
+        parameters=trimmed,
         mounting={"Surface Mount": "smd"},
     )
     result = _map_product(SAMPLE_RESPONSE, "726835", custom)

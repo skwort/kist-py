@@ -14,15 +14,13 @@ class ProviderMappingConfig(BaseModel):
     override via TOML in the config directory.
 
     The ``parameters`` dict maps raw API parameter names to normalised
-    target names. Target names determine routing:
+    target names.  Only mapped parameters are kept (whitelist approach).
+    Target names determine routing:
 
     - ``"package"`` and ``"mounting"`` are extracted to top-level
       ProviderProduct fields (and excluded from the parameters dict).
     - All other targets land in ``ProviderProduct.parameters``.
-    - Unmapped parameters pass through with their raw name.
-
-    The ``ignore_parameters`` list contains normalised target names
-    that should be dropped entirely (checked after normalisation).
+    - Parameters not in the map are dropped.
 
     The ``mounting`` dict normalises raw mounting values to canonical
     strings (e.g. ``"Surface Mount"`` --> ``"smd"``).
@@ -31,7 +29,6 @@ class ProviderMappingConfig(BaseModel):
     supplier_name: str = ""
     categories: dict[str, str] = {}
     parameters: dict[str, str] = {}
-    ignore_parameters: list[str] = []
     mounting: dict[str, str] = {}
 
 
