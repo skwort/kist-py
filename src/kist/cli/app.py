@@ -172,3 +172,32 @@ def check() -> None:
         raise typer.Exit(code=1)
 
     typer.echo("All clean.")
+
+
+@app.command()
+def sync() -> None:
+    """Sync KiCad symbol files and lib tables with the parts database."""
+    from kist.core.config import load_library_config
+    from kist.core.database import PartsDatabase
+    from kist.core.library import find_library
+    from kist.core.sync import sync_sym_lib_table, sync_symbols
+    from kist.errors import LibraryNotFoundError
+
+    try:
+        result = find_library()
+    except LibraryNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from None
+
+    config = load_library_config(result.library_root)
+    db = PartsDatabase(result.library_root / "parts.json")
+    db.load()
+
+    symbol_files = sync_symbols(result.library_root, db, config)
+    typer.echo(f"Synced {len(symbol_files)} symbol libraries.")
+
+    if result.project_dir:
+        sync_sym_lib_table(result.project_dir, symbol_files, config)
+        typer.echo(f"Updated sym-lib-table in {result.project_dir}")
+    else:
+        typer.echo("No project directory found; skipped sym-lib-table.")

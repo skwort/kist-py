@@ -6,7 +6,7 @@ import pytest
 
 from kist.core.categories import WELL_KNOWN_CATEGORIES
 from kist.core.database import PartsDatabase, create_empty
-from kist.core.sync import sync_symbols
+from kist.core.sync import SYM_LIB_TABLE, sync_sym_lib_table, sync_symbols
 from kist.kicad.mapping import library_filename
 from kist.kicad.symbols import SymbolLibrary
 from kist.models import (
@@ -225,3 +225,89 @@ def test_creates_symbols_dir_if_missing(tmp_path):
 
     path = root / "symbols" / _res_filename()
     assert path.exists()
+
+
+def test_sync_symbols_returns_written_files(library):
+    root, db, config = library
+    res = _make_resistor("10kΩ", "1%", "0603")
+    cap = _make_capacitor("100nF", "50V", "0402")
+    db.add(res)
+    db.add(cap)
+
+    written = sync_symbols(root, db, config)
+    assert len(written) == 2
+    assert all(p.suffix == ".kicad_sym" for p in written)
+
+
+# --- sync_sym_lib_table ---
+
+
+def test_sync_sym_lib_table_creates_file(library):
+    root, db, config = library
+    db.add(_make_resistor("10kΩ", "1%", "0603"))
+    symbol_files = sync_symbols(root, db, config)
+
+    project_dir = root.parent
+    sync_sym_lib_table(project_dir, symbol_files, config)
+
+    table_path = project_dir / SYM_LIB_TABLE
+    assert table_path.exists()
+    content = table_path.read_text()
+    assert "00k-Resistors" in content
+    assert "${KIPRJMOD}/lib/symbols/" in content
+
+
+def test_sync_sym_lib_table_updates_existing(library):
+    root, db, config = library
+    project_dir = root.parent
+
+    # Write an existing table with a non-kist entry
+    existing = (
+        "(sym_lib_table\n"
+        "  (version 7)\n"
+        '  (lib (name "power")(type "KiCad")'
+        '(uri "${KICAD8_SYMBOL_DIR}/power.kicad_sym")'
+        '(options "")(descr ""))\n'
+        ")\n"
+    )
+    (project_dir / SYM_LIB_TABLE).write_text(existing)
+
+    db.add(_make_resistor("10kΩ", "1%", "0603"))
+    symbol_files = sync_symbols(root, db, config)
+    sync_sym_lib_table(project_dir, symbol_files, config)
+
+    content = (project_dir / SYM_LIB_TABLE).read_text()
+    # Non-kist entry preserved
+    assert "power" in content
+    # Kist entry added
+    assert "00k-Resistors" in content
+
+
+def test_sync_sym_lib_table_empty_db(library):
+    root, db, config = library
+    symbol_files = sync_symbols(root, db, config)
+
+    project_dir = root.parent
+    sync_sym_lib_table(project_dir, symbol_files, config)
+
+    table_path = project_dir / SYM_LIB_TABLE
+    assert table_path.exists()
+    content = table_path.read_text()
+    assert "sym_lib_table" in content
+    # No lib entries
+    assert "00k-" not in content
+
+
+def test_sync_sym_lib_table_idempotent(library):
+    root, db, config = library
+    db.add(_make_resistor("10kΩ", "1%", "0603"))
+    symbol_files = sync_symbols(root, db, config)
+
+    project_dir = root.parent
+    sync_sym_lib_table(project_dir, symbol_files, config)
+    first = (project_dir / SYM_LIB_TABLE).read_text()
+
+    sync_sym_lib_table(project_dir, symbol_files, config)
+    second = (project_dir / SYM_LIB_TABLE).read_text()
+
+    assert first == second
