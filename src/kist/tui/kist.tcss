@@ -114,6 +114,10 @@ PartForm {
     }
 }
 
+PartForm {
+    height: 1fr;
+}
+
 /* -- PartForm layout --- */
 
 .form-field {
@@ -191,16 +195,19 @@ PartForm {
 #section-supplier {
     width: 1fr;
     height: 1fr;
+    overflow-y: auto;
 }
 
 #section-kicad {
     width: 1fr;
     height: 1fr;
+    overflow-y: auto;
 }
 
 #section-specs {
     width: 1fr;
     height: 1fr;
+    overflow-y: auto;
 }
 
 
