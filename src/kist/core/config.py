@@ -38,6 +38,15 @@ def load_global_config() -> GlobalConfig:
         raise ConfigError(f"Failed to read global config {path}: {exc}") from exc
 
 
+def save_global_config(config: GlobalConfig) -> None:
+    """Write global config to the user config directory."""
+    config_dir = _get_config_dir()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    path = config_dir / LIBRARY_CONFIG
+    doc = tomlkit.dumps(config.model_dump(exclude_none=True))
+    path.write_text(doc)
+
+
 def resolve_init_config(**overrides: str | list[str] | None) -> LibraryConfig:
     """Merge built-in defaults, global config, and CLI overrides."""
     global_cfg = load_global_config()

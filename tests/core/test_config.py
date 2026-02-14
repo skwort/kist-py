@@ -8,11 +8,12 @@ from kist.core.config import (
     load_project_ref,
     load_provider_mapping,
     resolve_init_config,
+    save_global_config,
     save_library_config,
     save_project_ref,
 )
 from kist.errors import ConfigError
-from kist.models import DEFAULT_SUPPLIERS, LibraryConfig, ProjectRef
+from kist.models import DEFAULT_SUPPLIERS, GlobalConfig, LibraryConfig, ProjectRef
 
 
 @pytest.fixture(autouse=True)
@@ -47,6 +48,31 @@ def test_load_global_config_invalid_toml(tmp_path, monkeypatch):
     (config_dir / "config.toml").write_text("not valid toml [[[")
     with pytest.raises(ConfigError):
         load_global_config()
+
+
+def test_global_config_theme_default():
+    cfg = GlobalConfig()
+    assert cfg.theme == "kist-dark"
+
+
+# --- save_global_config ---
+
+
+def test_save_global_config_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(tmp_path / "gc"))
+    cfg = GlobalConfig(theme="nord")
+    save_global_config(cfg)
+    loaded = load_global_config()
+    assert loaded.theme == "nord"
+    # Other fields preserved
+    assert loaded.symbols_dir == "symbols"
+
+
+def test_save_global_config_creates_dir(tmp_path, monkeypatch):
+    config_dir = tmp_path / "new-dir"
+    monkeypatch.setenv("KIST_CONFIG_DIR", str(config_dir))
+    save_global_config(GlobalConfig())
+    assert (config_dir / "config.toml").exists()
 
 
 # --- resolve_init_config ---
