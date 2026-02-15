@@ -13,3 +13,7 @@ parts.db
 result
 tmp/
 .env
+.coverage
+_site
+docs/draft
+TODO.md
