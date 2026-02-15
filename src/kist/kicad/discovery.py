@@ -8,14 +8,18 @@ and resolves ``${KICAD9_FOOTPRINT_DIR}`` style variables to real paths.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import platformdirs
 
 from kist.sexpr import find_all, parse_one
+
+log = logging.getLogger(__name__)
 
 # -- Data types ---
 
@@ -62,12 +66,59 @@ def _major(version: str) -> int:
     return int(version.split(".")[0])
 
 
+_NIX_EXPORT_RE = re.compile(
+    r"^export\s+(KICAD\d+_\w+_DIR)=\$\{[^-]+-'([^']+)'\}",
+)
+
+
+def _nix_kicad_variables() -> dict[str, Path]:
+    """
+    Extract KiCad variable defaults from a Nix wrapper script.
+
+    On NixOS / nix-managed installs, the ``kicad`` binary is a bash
+    wrapper that sets ``KICAD9_FOOTPRINT_DIR`` etc. with Nix store
+    paths as defaults.  Returns those paths, or an empty dict if
+    KiCad is not a Nix wrapper.
+    """
+    kicad_bin = shutil.which("kicad")
+    if kicad_bin is None:
+        return {}
+
+    bin_path = Path(kicad_bin)
+    resolved = bin_path.resolve()
+    if "/nix/store/" not in str(bin_path) and "/nix/store/" not in str(resolved):
+        return {}
+
+    # It's a Nix binary -- read the wrapper script for variable defaults
+    try:
+        wrapper_text = Path(kicad_bin).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {}
+
+    variables: dict[str, Path] = {}
+    for line in wrapper_text.splitlines():
+        m = _NIX_EXPORT_RE.match(line.strip())
+        if m:
+            var_name, nix_path = m.group(1), m.group(2)
+            p = Path(nix_path)
+            if p.is_dir():
+                variables[var_name] = p
+
+    if variables:
+        log.debug("Discovered Nix KiCad variables: %s", list(variables.keys()))
+
+    return variables
+
+
 def _build_variables(version: str, data_dir: Path) -> dict[str, Path]:
     """
     Build the KiCad variable map for a given version.
 
-    Checks environment variable overrides first, then falls back to
-    the conventional data directory layout.
+    Resolution order for each variable:
+    1. Environment variable override (user explicitly set it)
+    2. Conventional data directory (``~/.local/share/kicad/9.0/...``)
+    3. Nix wrapper defaults (if the conventional path doesn't exist
+       and KiCad is installed via Nix)
     """
     major = _major(version)
     mapping: dict[str, Path] = {}
@@ -85,6 +136,23 @@ def _build_variables(version: str, data_dir: Path) -> dict[str, Path]:
             mapping[var_name] = Path(env_val)
         else:
             mapping[var_name] = default_path
+
+    # If key directories are missing or empty, check for Nix wrapper overrides.
+    # KiCad may create empty dirs at ~/.local/share/kicad/9.0/footprints/
+    # while the actual libraries live in the Nix store.
+    def _dir_has_content(p: Path) -> bool:
+        return p.is_dir() and any(p.iterdir())
+
+    needs_nix = any(
+        not _dir_has_content(mapping[v])
+        for v in (f"KICAD{major}_FOOTPRINT_DIR", f"KICAD{major}_SYMBOL_DIR")
+        if v in mapping
+    )
+    if needs_nix:
+        nix_vars = _nix_kicad_variables()
+        for var_name, nix_path in nix_vars.items():
+            if var_name in mapping and not _dir_has_content(mapping[var_name]):
+                mapping[var_name] = nix_path
 
     return mapping
 
