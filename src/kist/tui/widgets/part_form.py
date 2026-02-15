@@ -240,6 +240,11 @@ class PartForm(Static):
                 yield Input(
                     id="symbol", classes="field-value", placeholder="Library:Symbol"
                 )
+                yield Button(
+                    "\N{HORIZONTAL ELLIPSIS}",
+                    id="browse-symbol",
+                    classes="browse-btn",
+                )
             with Horizontal(classes="form-field"):
                 yield Label("Footprint", classes="field-label")
                 yield Label("", id="footprint-ro", classes="field-value-ro")
@@ -247,6 +252,11 @@ class PartForm(Static):
                     id="footprint",
                     classes="field-value",
                     placeholder="Library:Footprint",
+                )
+                yield Button(
+                    "\N{HORIZONTAL ELLIPSIS}",
+                    id="browse-footprint",
+                    classes="browse-btn",
                 )
             with Horizontal(classes="form-field"):
                 yield Label("Keywords", classes="field-label")
@@ -334,6 +344,10 @@ class PartForm(Static):
         # Action buttons hidden in readonly
         self.query_one("#specs-actions").display = editable
         self.query_one("#suppliers-actions").display = editable
+
+        # Browse buttons hidden in readonly
+        self.query_one("#browse-symbol", Button).display = editable
+        self.query_one("#browse-footprint", Button).display = editable
 
         # DataTables only need focus in editable mode
         self.query_one("#specs-table", DataTable).can_focus = editable
@@ -464,6 +478,50 @@ class PartForm(Static):
             self._submit_spec()
         elif event.button.id == "add-supplier":
             self._submit_supplier()
+        elif event.button.id == "browse-symbol":
+            self._open_library_search("symbol")
+        elif event.button.id == "browse-footprint":
+            self._open_library_search("footprint")
+
+    # -- Library search ---
+
+    def _open_library_search(self, field: str) -> None:
+        """Push LibrarySearchModal for the given field (symbol or footprint)."""
+        from kist.kicad.indexer import LibraryIndex
+        from kist.tui.app import KistApp
+        from kist.tui.modals.library_search import LibrarySearchModal
+
+        app: KistApp = self.app  # type: ignore[assignment]
+        index: LibraryIndex | None = app.get_library_index()
+        if index is None:
+            self.notify(
+                "KiCad not found -- cannot browse libraries", severity="warning"
+            )
+            return
+
+        if field == "symbol":
+            items = index.symbols
+            title = "Symbols"
+        else:
+            items = index.footprints
+            title = "Footprints"
+
+        if not items:
+            self.notify(
+                f"No {title.lower()} found in library index", severity="warning"
+            )
+            return
+
+        app.push_screen(
+            LibrarySearchModal(items, title=title),
+            callback=lambda ref: self._on_library_search_result(ref, field),
+        )
+
+    def _on_library_search_result(self, ref: str | None, field: str) -> None:
+        """Handle LibrarySearchModal result: populate the Input."""
+        if ref is None:
+            return
+        self.query_one(f"#{field}", Input).value = ref
 
     # -- Spec management ---
 
