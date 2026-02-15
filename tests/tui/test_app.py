@@ -7,6 +7,7 @@ from kist.models.config import GlobalConfig
 from kist.tui.app import KistApp
 from kist.tui.screens.add import AddScreen
 from kist.tui.screens.browse import BrowseScreen
+from kist.tui.screens.init import InitScreen
 
 
 @pytest.fixture(autouse=True)
@@ -20,13 +21,15 @@ def app():
 
 
 async def test_default_screen_is_browse(app):
+    """Default screen is BrowseScreen; InitScreen pushed on top when no library."""
     async with app.run_test():
-        assert isinstance(app.screen, BrowseScreen)
+        # InitScreen is on top because no library was found
+        assert isinstance(app.screen, InitScreen)
 
 
 async def test_header_shows_title(app):
     async with app.run_test():
-        header_title = app.query_one("HeaderTitle")
+        header_title = app.screen.query_one("HeaderTitle")
         content = header_title.render()
         assert "Kist" in str(content)
 

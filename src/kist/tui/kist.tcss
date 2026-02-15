@@ -91,7 +91,7 @@ Screen {
 
 /* -- Compact form widgets (Posting-style) --- */
 
-PartForm, CategoryFormModal, SettingsModal {
+PartForm, CategoryFormModal, SettingsModal, InitScreen {
     & Input {
         padding: 0 1;
         height: 1;
@@ -492,6 +492,43 @@ ConfirmModal {
     & Button {
         margin: 0 1;
     }
+}
+
+/* -- Init screen --- */
+
+#init-scroll {
+    height: 1fr;
+    margin: 0 1;
+}
+
+#section-init-categories {
+    height: auto;
+    max-height: 24;
+}
+
+#init-cat-table {
+    height: auto;
+    max-height: 18;
+    width: 1fr;
+    margin: 0 1;
+    &:focus {
+        border-left: inner $accent;
+    }
+}
+
+#init-cat-actions {
+    height: auto;
+    dock: bottom;
+    margin: 1 1 0 1;
+    & Button {
+        margin: 0 1 0 0;
+    }
+}
+
+#init-buttons {
+    height: auto;
+    align: right middle;
+    margin: 1 1;
 }
 
 /* -- Modal overlay -- dimmed background like command palette --- */

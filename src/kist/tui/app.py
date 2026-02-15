@@ -42,10 +42,12 @@ class KistApp(App):
         self,
         start_screen: str | None = None,
         url_or_mpn: str | None = None,
+        init_path: Path | None = None,
     ) -> None:
         super().__init__()
         self._start_screen = start_screen
         self._url_or_mpn = url_or_mpn
+        self._init_path = init_path
 
     def get_default_screen(self) -> Screen:
         from kist.tui.screens.browse import BrowseScreen
@@ -61,10 +63,20 @@ class KistApp(App):
         else:
             self.theme = "null"
         self._discover_library()
-        if self._start_screen == "add":
+        if self._start_screen == "init":
+            from kist.tui.screens.init import InitScreen
+
+            self.push_screen(InitScreen(init_path=self._init_path))
+        elif self._start_screen == "add":
             from kist.tui.screens.add import AddScreen
 
             self.push_screen(AddScreen(url_or_mpn=self._url_or_mpn))
+        elif self.library_path is None and self._start_screen is None:
+            from kist.tui.screens.browse import BrowseScreen
+            from kist.tui.screens.init import InitScreen
+
+            if isinstance(self.screen, BrowseScreen):
+                self.push_screen(InitScreen())
 
     def _discover_library(self) -> None:
         try:
@@ -126,6 +138,12 @@ class KistApp(App):
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
         yield from super().get_system_commands(screen)
+        if self.library_path is None:
+            yield SystemCommand(
+                "Init library",
+                "Create a new kist library",
+                self._push_init_screen,
+            )
         yield SystemCommand(
             "Add part",
             "Add a new part to the library",
@@ -154,6 +172,11 @@ class KistApp(App):
             )
 
     # -- Command handlers ---
+
+    def _push_init_screen(self) -> None:
+        from kist.tui.screens.init import InitScreen
+
+        self.push_screen(InitScreen())
 
     def _push_add_screen(self) -> None:
         from kist.tui.screens.add import AddScreen
@@ -196,7 +219,12 @@ class KistApp(App):
 def run_tui(
     start_screen: str | None = None,
     url_or_mpn: str | None = None,
+    init_path: Path | None = None,
 ) -> None:
     """Entry point for launching the TUI from the CLI."""
-    app = KistApp(start_screen=start_screen, url_or_mpn=url_or_mpn)
+    app = KistApp(
+        start_screen=start_screen,
+        url_or_mpn=url_or_mpn,
+        init_path=init_path,
+    )
     app.run()
