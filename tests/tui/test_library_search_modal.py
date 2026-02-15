@@ -1,5 +1,7 @@
 """LibrarySearchModal tests -- search, filter, select, and cancel."""
 
+import asyncio
+
 from textual.app import App
 from textual.widgets import DataTable, Input, Label
 
@@ -38,13 +40,19 @@ async def test_modal_shows_status_text():
         assert "6 footprints" in str(status.content)
 
 
+async def _wait_debounce(pilot) -> None:
+    """Wait long enough for the search debounce timer to fire."""
+    await asyncio.sleep(0.25)
+    await pilot.pause()
+
+
 async def test_modal_filters_by_search():
     app = ModalApp()
     async with app.run_test() as pilot:
         await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS, title="Footprints"))
         search = app.screen.query_one("#libsearch-input", Input)
         search.value = "0603"
-        await pilot.pause()
+        await _wait_debounce(pilot)
         table = app.screen.query_one("#libsearch-table", DataTable)
         assert table.row_count == 2  # R_0603 and C_0603
 
@@ -55,7 +63,7 @@ async def test_modal_filter_updates_status():
         await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS, title="Footprints"))
         search = app.screen.query_one("#libsearch-input", Input)
         search.value = "QFP"
-        await pilot.pause()
+        await _wait_debounce(pilot)
         status = app.screen.query_one("#libsearch-status", Label)
         assert "1 / 6" in str(status.content)
 
@@ -66,7 +74,7 @@ async def test_modal_filter_case_insensitive():
         await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS, title="Footprints"))
         search = app.screen.query_one("#libsearch-input", Input)
         search.value = "capacitor"
-        await pilot.pause()
+        await _wait_debounce(pilot)
         table = app.screen.query_one("#libsearch-table", DataTable)
         assert table.row_count == 2
 
@@ -112,12 +120,12 @@ async def test_modal_clear_search_restores_all():
         await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS, title="Footprints"))
         search = app.screen.query_one("#libsearch-input", Input)
         search.value = "QFP"
-        await pilot.pause()
+        await _wait_debounce(pilot)
         table = app.screen.query_one("#libsearch-table", DataTable)
         assert table.row_count == 1
         # Clear search
         search.value = ""
-        await pilot.pause()
+        await _wait_debounce(pilot)
         assert table.row_count == 6
 
 
