@@ -16,7 +16,7 @@ from kist.core.config import load_library_config as _load_library_config
 from kist.core.config import save_library_config as _save_library_config
 from kist.core.database import PartsDatabase
 from kist.core.library import find_library
-from kist.core.sync import sync_symbols
+from kist.core.sync import sync_sym_lib_table, sync_symbols
 from kist.errors import LibraryNotFoundError
 from kist.models.config import LibraryConfig
 from kist.models.part import Ipn, Part
@@ -35,6 +35,7 @@ class KistApp(App):
 
     library_path: reactive[Path | None] = reactive(None)
     library_config: reactive[LibraryConfig | None] = reactive(None)
+    project_dir: reactive[Path | None] = reactive(None)
     parts_version: reactive[int] = reactive(0)
 
     def __init__(
@@ -70,9 +71,11 @@ class KistApp(App):
             result = find_library()
             self.library_path = result.library_root
             self.library_config = _load_library_config(result.library_root)
+            self.project_dir = result.project_dir
         except LibraryNotFoundError:
             self.library_path = None
             self.library_config = None
+            self.project_dir = None
 
     # -- Mutation methods ---
 
@@ -101,10 +104,12 @@ class KistApp(App):
         self.library_config = config
 
     def _after_mutation(self, db: PartsDatabase) -> None:
-        """Post-mutation side effects: sync, UI refresh."""
+        """Post-mutation side effects: sync symbols, lib table, UI refresh."""
         assert self.library_path is not None
         if self.library_config:
-            sync_symbols(self.library_path, db, self.library_config)
+            symbol_files = sync_symbols(self.library_path, db, self.library_config)
+            if self.project_dir:
+                sync_sym_lib_table(self.project_dir, symbol_files, self.library_config)
         self.parts_version += 1
 
     def format_title(self, title: str, sub_title: str) -> Content:
@@ -181,7 +186,9 @@ class KistApp(App):
             return
         db = PartsDatabase(self.library_path / "parts.json")
         db.load()
-        sync_symbols(self.library_path, db, self.library_config)
+        symbol_files = sync_symbols(self.library_path, db, self.library_config)
+        if self.project_dir:
+            sync_sym_lib_table(self.project_dir, symbol_files, self.library_config)
         count = len(db.list_parts())
         self.notify(f"Synced {count} part{'s' if count != 1 else ''} to KiCad")
 
