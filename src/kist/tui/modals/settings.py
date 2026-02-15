@@ -55,6 +55,23 @@ class SettingsModal(ModalScreen):
                             prompt="Select theme",
                         )
 
+                # Providers section
+                with Vertical(classes="section", id="section-providers"):
+                    with Horizontal(classes="form-field"):
+                        yield Label("Client ID", classes="field-label")
+                        yield Input(
+                            id="setting-dk-client-id",
+                            classes="field-value",
+                            password=True,
+                        )
+                    with Horizontal(classes="form-field"):
+                        yield Label("Client Secret", classes="field-label")
+                        yield Input(
+                            id="setting-dk-client-secret",
+                            classes="field-value",
+                            password=True,
+                        )
+
                 # Library section (only when a library is open)
                 if self._library_path is not None:
                     with Vertical(classes="section", id="section-library"):
@@ -120,6 +137,16 @@ class SettingsModal(ModalScreen):
         )
         theme_select.value = theme
 
+        # Provider credentials
+        self.query_one("#section-providers").border_title = "DigiKey API"
+        dk_cfg = global_cfg.providers.digikey
+        if dk_cfg.client_id:
+            self.query_one("#setting-dk-client-id", Input).value = dk_cfg.client_id
+        if dk_cfg.client_secret:
+            self.query_one(
+                "#setting-dk-client-secret", Input
+            ).value = dk_cfg.client_secret
+
         lib_cfg = self.app.library_config
         if self._library_path is not None and lib_cfg is not None:
             self.query_one("#section-library").border_title = "Library"
@@ -158,6 +185,14 @@ class SettingsModal(ModalScreen):
         theme_val = self.query_one("#setting-theme", Select).value
         if theme_val != Select.BLANK:
             global_cfg.theme = str(theme_val)
+        # Save provider credentials
+        dk_client_id = self.query_one("#setting-dk-client-id", Input).value.strip()
+        dk_client_secret = self.query_one(
+            "#setting-dk-client-secret", Input
+        ).value.strip()
+        global_cfg.providers.digikey.client_id = dk_client_id or None
+        global_cfg.providers.digikey.client_secret = dk_client_secret or None
+
         save_global_config(global_cfg)
 
         # Save library fields if a library is open

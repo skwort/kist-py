@@ -87,3 +87,43 @@ async def test_no_library_hides_library_sections():
         assert len(results) == 0
         results = app.screen.query("#section-directories")
         assert len(results) == 0
+
+
+async def test_digikey_credentials_save():
+    app = SettingsApp()
+    async with app.run_test() as pilot:
+        await app.push_screen(SettingsModal())
+        app.screen.query_one("#setting-dk-client-id", Input).value = "my-id"
+        app.screen.query_one("#setting-dk-client-secret", Input).value = "my-secret"
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+        cfg = load_global_config()
+        assert cfg.providers.digikey.client_id == "my-id"
+        assert cfg.providers.digikey.client_secret == "my-secret"
+
+
+async def test_digikey_credentials_load():
+    from kist.core.config import save_global_config
+    from kist.models.config import GlobalConfig
+
+    cfg = GlobalConfig()
+    cfg.providers.digikey.client_id = "saved-id"
+    cfg.providers.digikey.client_secret = "saved-secret"
+    save_global_config(cfg)
+
+    app = SettingsApp()
+    async with app.run_test():
+        await app.push_screen(SettingsModal())
+        assert app.screen.query_one("#setting-dk-client-id", Input).value == "saved-id"
+        assert (
+            app.screen.query_one("#setting-dk-client-secret", Input).value
+            == "saved-secret"
+        )
+
+
+async def test_digikey_credentials_password_mode():
+    app = SettingsApp()
+    async with app.run_test():
+        await app.push_screen(SettingsModal())
+        assert app.screen.query_one("#setting-dk-client-id", Input).password is True
+        assert app.screen.query_one("#setting-dk-client-secret", Input).password is True
