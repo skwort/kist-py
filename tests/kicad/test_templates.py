@@ -122,6 +122,39 @@ def test_build_properties_semi_jellybean(semi_jellybean_part):
     assert props["Value"] == "TL072"
 
 
+# -- Helpers for property inspection ---
+
+
+def _find_property(sym: list, key: str) -> list | None:
+    """Find a (property "key" ...) child in a symbol tree."""
+    for child in sym:
+        if (
+            isinstance(child, list)
+            and child
+            and child[0] == "property"
+            and len(child) > 2
+            and child[1] == key
+        ):
+            return child
+    return None
+
+
+def _is_hidden(prop: list) -> bool:
+    """True if property has (hide yes) in its effects."""
+    for child in prop:
+        if isinstance(child, list) and child and child[0] == "effects":
+            for effect in child:
+                if (
+                    isinstance(effect, list)
+                    and effect
+                    and effect[0] == "hide"
+                    and len(effect) > 1
+                    and str(effect[1]) == "yes"
+                ):
+                    return True
+    return False
+
+
 # -- symbol_for_part dispatch ---
 
 
@@ -137,6 +170,46 @@ def test_symbol_for_part_ic(proprietary_part: ProprietaryPart):
     # IC gets a stub -- no pins
     assert _count_pins(sym) == 0
     assert sym[1] == proprietary_part.name
+
+
+# -- Spec properties ---
+
+
+def test_symbol_for_part_includes_specs(jellybean_part: JellybeanPart):
+    """Jellybean specs appear as properties on the generated symbol."""
+    sym = symbol_for_part(jellybean_part, CATS)
+    res_prop = _find_property(sym, "resistance")
+    tol_prop = _find_property(sym, "tolerance")
+    assert res_prop is not None
+    assert str(res_prop[2]) == "10kΩ"
+    assert tol_prop is not None
+    assert str(tol_prop[2]) == "1%"
+
+
+def test_spec_properties_hidden_by_default(jellybean_part: JellybeanPart):
+    """Spec properties are hidden unless explicitly marked visible."""
+    sym = symbol_for_part(jellybean_part, CATS)
+    res_prop = _find_property(sym, "resistance")
+    tol_prop = _find_property(sym, "tolerance")
+    assert res_prop is not None and _is_hidden(res_prop)
+    assert tol_prop is not None and _is_hidden(tol_prop)
+
+
+def test_visible_specs_not_hidden(jellybean_part: JellybeanPart):
+    """Specs in visible_specs set are not hidden."""
+    sym = symbol_for_part(jellybean_part, CATS, visible_specs={"resistance"})
+    res_prop = _find_property(sym, "resistance")
+    tol_prop = _find_property(sym, "tolerance")
+    assert res_prop is not None and not _is_hidden(res_prop)
+    assert tol_prop is not None and _is_hidden(tol_prop)
+
+
+def test_proprietary_part_no_spec_properties(proprietary_part: ProprietaryPart):
+    """Proprietary parts without specs get no spec properties."""
+    sym = symbol_for_part(proprietary_part, CATS)
+    # Standard properties exist, but no spec properties
+    assert _find_property(sym, "Reference") is not None
+    assert _find_property(sym, "resistance") is None
 
 
 # -- Snapshot tests ---

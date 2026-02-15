@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from kist.sexpr import Atom, SexprError, dumps, find_all, parse_one
+from kist.sexpr import Atom, SexprError, dumps, find_all, find_one, parse_one
 
 # -- Constants ---
 
@@ -151,3 +151,30 @@ class SymbolLibrary:
                         ],
                     ]
                 )
+
+
+# -- Property visibility ---
+
+
+def _is_property_hidden(prop: list) -> bool:
+    """True if this ``(property ...)`` node has ``(hide yes)`` in its effects."""
+    effects = find_one(prop, "effects")
+    if effects is None:
+        return False
+    hide = find_one(effects, "hide")
+    return hide is not None and len(hide) > 1 and str(hide[1]) == "yes"
+
+
+def get_visible_properties(sym: list) -> set[str]:
+    """
+    Return the names of properties that are NOT hidden on *sym*.
+
+    Useful for preserving user-toggled visibility across re-syncs:
+    if a user makes a spec property visible in KiCad's editor,
+    ``sync_symbols`` should not force it back to hidden.
+    """
+    visible: set[str] = set()
+    for prop in find_all(sym, "property"):
+        if len(prop) > 1 and not _is_property_hidden(prop):
+            visible.add(str(prop[1]))
+    return visible
