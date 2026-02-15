@@ -494,6 +494,50 @@ ConfirmModal {
     }
 }
 
+/* -- Library search modal --- */
+
+LibrarySearchModal {
+    align: center middle;
+
+    & Input {
+        padding: 0 1;
+        height: 1;
+        border: none;
+        &:focus {
+            padding-left: 0;
+            border-left: outer $surface-lighten-1;
+        }
+    }
+}
+
+#libsearch-container {
+    width: 90%;
+    max-width: 100;
+    height: 80%;
+    border: round $accent;
+    border-title-color: $foreground;
+    border-title-style: bold;
+    background: $background;
+    padding: 1 2;
+}
+
+#libsearch-input {
+    dock: top;
+    margin: 0 0 1 0;
+}
+
+#libsearch-status {
+    dock: top;
+    height: 1;
+    text-opacity: 60%;
+    padding: 0 1;
+}
+
+#libsearch-table {
+    height: 1fr;
+    width: 1fr;
+}
+
 /* -- Modal overlay -- dimmed background like command palette --- */
 
 ModalScreen {
