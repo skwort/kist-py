@@ -30,6 +30,32 @@ _SI_PREFIXES: dict[str, float] = {
 
 _UNITS: list[str] = ["Hz", "Ω", "F", "H", "V", "A", "W"]
 
+# Map word-form units to canonical symbols (case-insensitive lookup)
+_UNIT_WORDS: dict[str, str] = {
+    "ohms": "Ω",
+    "ohm": "Ω",
+    "farads": "F",
+    "farad": "F",
+    "henrys": "H",
+    "henry": "H",
+    "henries": "H",
+    "volts": "V",
+    "volt": "V",
+    "amps": "A",
+    "amp": "A",
+    "amperes": "A",
+    "watts": "W",
+    "watt": "W",
+    "hertz": "Hz",
+    "hz": "Hz",
+}
+
+# Trailing qualifiers to strip before parsing: "(Max)", "per Contact", etc.
+_QUALIFIER_RE = re.compile(r"\s*(?:\(.*?\)|per\s+.*)$", re.IGNORECASE)
+
+# Parenthetical portion of package strings: "0402 (1005 Metric)"
+_PKG_PAREN_RE = re.compile(r"\s*\(.*\)\s*$")
+
 _RES_TIERS: list[tuple[float, str]] = [
     (1.0, "R"),
     (1e3, "K"),
@@ -82,11 +108,17 @@ _PACKAGE_ALIASES: dict[str, str] = {
 # Matches forms like "4K7", "4R7", "100n", "10u", "2M2"
 _SHORTHAND_RE = re.compile(r"^(\d+)([RKMGnup])(\d+)?$")
 
-# Standard form: optional number, optional SI prefix, optional unit
-# e.g. "4.7k", "100nF", "3.3V", "500mA", "8MHz"
+# Standard form: number, optional SI prefix, optional unit (symbol or word)
+# e.g. "4.7k", "100nF", "3.3V", "500mA", "8MHz", "10 kOhms"
 _UNITS_PATTERN = "|".join(re.escape(u) for u in _UNITS)
+_UNIT_WORDS_PATTERN = "|".join(re.escape(w) for w in _UNIT_WORDS)
 _STANDARD_RE = re.compile(
-    r"^([0-9]*\.?[0-9]+)\s*([pnµumkKMG])?\s*(" + _UNITS_PATTERN + r")?$"
+    r"^([0-9]*\.?[0-9]+)\s*([pnµumkKMG])?\s*("
+    + _UNITS_PATTERN
+    + "|"
+    + _UNIT_WORDS_PATTERN
+    + r")?$",
+    re.IGNORECASE,
 )
 
 # Strip hyphens between alpha and digit portions of unknown packages
@@ -100,13 +132,24 @@ def _parse_engineering(s: str) -> tuple[float, str]:
     """
     Parse an engineering value string into (numeric_value, unit).
 
-    Handles SI prefixes, unicode symbols, and shorthand notation where
-    the multiplier letter replaces the decimal point (e.g. ``4K7``).
+    Handles SI prefixes, unicode symbols, word-form units (``Ohms``,
+    ``kOhms``), and shorthand notation where the multiplier letter
+    replaces the decimal point (e.g. ``4K7``).
+
+    Strips trailing qualifiers like ``(Max)`` and ``per Contact`` before
+    parsing, and normalises ``VDC`` to ``V``.
 
     Returns the numeric value as a float and the base unit as a string
     (empty string if no unit was detected).
     """
     s = s.strip()
+
+    # Strip trailing qualifiers: "(Max)", "(AC/DC)", "per Contact"
+    s = _QUALIFIER_RE.sub("", s).strip()
+
+    # Normalise VDC to V
+    if s.endswith("VDC"):
+        s = s[:-3] + "V"
 
     # Try shorthand first: "4K7", "4R7", "100n", "2M2"
     m = _SHORTHAND_RE.match(s)
@@ -128,14 +171,18 @@ def _parse_engineering(s: str) -> tuple[float, str]:
             value = int(whole) * multiplier
         return (value, unit)
 
-    # Try standard form: "4.7kΩ", "100nF", "10k", "3.3V"
+    # Try standard form: "4.7kΩ", "100nF", "10k", "3.3V", "10 kOhms"
     m = _STANDARD_RE.match(s)
     if m:
         num_str, prefix, unit_str = m.group(1), m.group(2), m.group(3)
         value = float(num_str)
         if prefix:
             value *= _SI_PREFIXES[prefix]
-        return (value, unit_str or "")
+        # Resolve word-form units to canonical symbols
+        unit = unit_str or ""
+        if unit:
+            unit = _UNIT_WORDS.get(unit.lower(), unit)
+        return (value, unit)
 
     msg = f"Cannot parse engineering value: {s!r}"
     raise ValueError(msg)
@@ -155,9 +202,9 @@ def _format_eng_rlc(
 
     *tiers* must be sorted ascending by multiplier.
     """
-    # Pick the largest tier that fits
-    chosen_mult = 1.0
-    chosen_letter = tiers[0][1]  # fallback to smallest tier
+    # Pick the largest tier that fits (default to smallest tier)
+    chosen_mult = tiers[0][0]
+    chosen_letter = tiers[0][1]
     for mult, letter in tiers:
         if value >= mult * 0.9999:  # tolerance for float comparison
             chosen_mult = mult
@@ -325,7 +372,11 @@ def normalise_percentage(s: str) -> str:
     s = s.strip().rstrip("%").strip()
     # Handle ± prefix
     s = s.lstrip("±").strip()
-    value = float(s)
+    try:
+        value = float(s)
+    except ValueError:
+        # Non-numeric values like "Jumper" are not real percentages
+        return ""
     if value == int(value):
         return f"{int(value)}PCT"
     return f"{value}PCT"
@@ -356,12 +407,19 @@ def normalise_package(s: str) -> str:
     """
     Normalise a package designation.
 
-    Known aliases are looked up first. Unknown packages are uppercased
-    with hyphens between alpha and digit portions stripped.
+    Strips parenthetical metric equivalents first (e.g.
+    ``"0402 (1005 Metric)"`` becomes ``"0402"``). Then checks known
+    aliases, and falls back to uppercasing with alpha-digit hyphen
+    stripping.
 
-    Examples: ``"SOIC-8"`` --> ``"SO8"``, ``"0603"`` --> ``"0603"``.
+    Examples: ``"SOIC-8"`` --> ``"SO8"``, ``"0603"`` --> ``"0603"``,
+    ``"0402 (1005 Metric)"`` --> ``"0402"``.
     """
     s = s.strip()
+
+    # Strip parenthetical suffixes: "0402 (1005 Metric)", etc.
+    s = _PKG_PAREN_RE.sub("", s).strip()
+
     upper = s.upper()
 
     # Try exact match in aliases (case-insensitive via upper key)

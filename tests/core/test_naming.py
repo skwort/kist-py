@@ -51,6 +51,13 @@ CATS = WELL_KNOWN_CATEGORIES
         ("10Ω", "10R"),
         ("100kΩ", "100K"),
         ("2.2MΩ", "2M2"),
+        # DigiKey word-form units
+        ("10 kOhms", "10K"),
+        ("4.7 kOhms", "4K7"),
+        ("374 Ohms", "374R"),
+        ("5.1 kOhms", "5K1"),
+        ("1 MOhms", "1M"),
+        ("5 mOhms", "0R005"),
     ],
 )
 def test_normalise_resistance(input_val, expected):
@@ -76,6 +83,12 @@ def test_normalise_resistance(input_val, expected):
         ("1nF", "1n"),
         ("470pF", "470p"),
         ("4u7", "4u7"),
+        # DigiKey space-separated format
+        ("0.1 µF", "100n"),
+        ("100 pF", "100p"),
+        ("10000 pF", "10n"),
+        # Sub-picofarad values
+        ("0.7 pF", "0p7"),
     ],
 )
 def test_normalise_capacitance(input_val, expected):
@@ -119,6 +132,10 @@ def test_normalise_inductance(input_val, expected):
         ("30V", "30V"),
         ("40V", "40V"),
         ("63V", "63V"),
+        # DigiKey formats with qualifiers
+        ("48VDC", "48V"),
+        ("3.6V (Max)", "3V6"),
+        ("5V (Max)", "5V"),
     ],
 )
 def test_normalise_voltage(input_val, expected):
@@ -139,6 +156,10 @@ def test_normalise_voltage(input_val, expected):
         ("3A", "3A"),
         ("200mA", "200mA"),
         ("20mA", "20mA"),
+        # DigiKey space-separated formats
+        ("3.42 A", "3420mA"),
+        ("250 mA", "250mA"),
+        ("540 mA", "540mA"),
     ],
 )
 def test_normalise_current(input_val, expected):
@@ -174,6 +195,8 @@ def test_normalise_power(input_val, expected):
         ("100MHz", "100MHz"),
         ("1GHz", "1GHz"),
         ("48MHz", "48MHz"),
+        # DigiKey space-separated
+        ("32.768 kHz", "32K768Hz"),
     ],
 )
 def test_normalise_frequency(input_val, expected):
@@ -191,6 +214,8 @@ def test_normalise_frequency(input_val, expected):
         ("20%", "20PCT"),
         ("±10%", "10PCT"),
         ("0.1%", "0.1PCT"),
+        # Non-numeric values are not real percentages
+        ("Jumper", ""),
     ],
 )
 def test_normalise_percentage(input_val, expected):
@@ -235,6 +260,12 @@ def test_normalise_impedance(input_val, expected):
         ("SOD-323", "SOD323"),
         ("HC-49", "HC49"),
         ("10x10", "10X10"),
+        # DigiKey parenthetical metric equivalents
+        ("0402 (1005 Metric)", "0402"),
+        ("0603 (1608 Metric)", "0603"),
+        ("0805 (2012 Metric)", "0805"),
+        ('16-TSSOP (0.173", 4.40mm Width)', "16-TSSOP"),
+        ("SOT-23-6 (some note)", "SOT236"),
     ],
 )
 def test_normalise_package(input_val, expected):
