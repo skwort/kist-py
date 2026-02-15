@@ -8,7 +8,7 @@ from pathlib import Path
 from kist.core.database import PartsDatabase
 from kist.kicad.lib_table import generate_sym_lib_table, update_sym_lib_table
 from kist.kicad.mapping import library_filename
-from kist.kicad.symbols import SymbolLibrary
+from kist.kicad.symbols import SymbolLibrary, get_visible_properties
 from kist.kicad.templates import symbol_for_part
 from kist.models.config import LibraryConfig
 
@@ -52,7 +52,12 @@ def sync_symbols(
             lib = SymbolLibrary.empty()
 
         for part in parts:
-            lib.set_symbol(part.name, symbol_for_part(part, config.categories))
+            existing = lib.get_symbol(part.name)
+            visible = get_visible_properties(existing) if existing else None
+            lib.set_symbol(
+                part.name,
+                symbol_for_part(part, config.categories, visible_specs=visible),
+            )
 
         lib.save(path)
         written.append(path)

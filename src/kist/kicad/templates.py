@@ -448,15 +448,38 @@ _TEMPLATES: dict[str, Callable] = {
 }
 
 
+def _spec_property(key: str, value: str, *, hidden: bool = True) -> list[SExpr]:
+    """A specification property at (0,0,0).  Hidden by default."""
+    effects: list[SExpr] = [
+        _k("effects"),
+        [_k("font"), [_k("size"), _k("1.27"), _k("1.27")]],
+    ]
+    if hidden:
+        effects.append([_k("hide"), _k("yes")])
+    return [
+        _k("property"),
+        _q(key),
+        _q(value),
+        [_k("at"), _k("0"), _k("0"), _k("0")],
+        effects,
+    ]
+
+
 def symbol_for_part(
     part: Part,
     categories: dict[str, CategoryDef] | None = None,
+    *,
+    visible_specs: set[str] | None = None,
 ) -> list[SExpr]:
     """
     Generate the appropriate symbol tree for *part*.
 
     Jellybean parts whose category has a ``symbol_template`` get full
     graphic templates. Everything else gets a stub with properties only.
+
+    Part specifications are appended as hidden properties. Any spec
+    name in *visible_specs* keeps its visible state (not forced hidden),
+    so that user-toggled visibility survives re-sync.
     """
     props = build_properties(part)
     if part.tier == Tier.JELLYBEAN and categories:
@@ -464,5 +487,22 @@ def symbol_for_part(
         if cat_def and cat_def.symbol_template:
             template_fn = _TEMPLATES.get(cat_def.symbol_template)
             if template_fn:
-                return template_fn(part.name, props)
-    return stub_symbol(part.name, props)
+                tree = template_fn(part.name, props)
+                _append_specs(tree, part, visible_specs)
+                return tree
+    tree = stub_symbol(part.name, props)
+    _append_specs(tree, part, visible_specs)
+    return tree
+
+
+def _append_specs(
+    tree: list[SExpr],
+    part: Part,
+    visible_specs: set[str] | None,
+) -> None:
+    """Append specification properties to a symbol tree."""
+    if not part.specifications:
+        return
+    visible = visible_specs or set()
+    for key, value in part.specifications.items():
+        tree.append(_spec_property(key, value, hidden=key not in visible))
