@@ -180,6 +180,100 @@ def test_updated_part_reflected_after_resync(library):
             break
 
 
+# --- spec properties ---
+
+
+def test_sync_writes_spec_properties(library):
+    """Synced resistor symbols include specification properties."""
+    root, db, config = library
+    part = _make_resistor("10kΩ", "1%", "0603")
+    db.add(part)
+
+    sync_symbols(root, db, config)
+
+    path = root / "symbols" / _res_filename()
+    lib = SymbolLibrary.load(path)
+    sym = lib.get_symbol(part.name)
+    # Find the resistance property
+    res_prop = _find_prop(sym, "resistance")
+    assert res_prop is not None
+    assert str(res_prop[2]) == "10kΩ"
+    tol_prop = _find_prop(sym, "tolerance")
+    assert tol_prop is not None
+    assert str(tol_prop[2]) == "1%"
+
+
+def test_sync_preserves_visible_spec_properties(library):
+    """If a user makes a spec property visible, re-sync preserves that."""
+    root, db, config = library
+    part = _make_resistor("10kΩ", "1%", "0603")
+    db.add(part)
+
+    # First sync -- all specs hidden
+    sync_symbols(root, db, config)
+
+    # Simulate user toggling "resistance" to visible in KiCad:
+    # remove (hide yes) from the resistance property's effects
+    path = root / "symbols" / _res_filename()
+    lib = SymbolLibrary.load(path)
+    sym = lib.get_symbol(part.name)
+    res_prop = _find_prop(sym, "resistance")
+    assert res_prop is not None
+    _make_prop_visible(res_prop)
+    lib.save(path)
+
+    # Re-sync -- should preserve visibility
+    sync_symbols(root, db, config)
+
+    lib = SymbolLibrary.load(path)
+    sym = lib.get_symbol(part.name)
+    res_prop = _find_prop(sym, "resistance")
+    assert res_prop is not None
+    assert not _prop_is_hidden(res_prop), "resistance should stay visible after re-sync"
+
+    # tolerance should still be hidden
+    tol_prop = _find_prop(sym, "tolerance")
+    assert tol_prop is not None
+    assert _prop_is_hidden(tol_prop)
+
+
+def _find_prop(sym, key):
+    for child in sym:
+        if (
+            isinstance(child, list)
+            and child
+            and child[0] == "property"
+            and len(child) > 2
+            and child[1] == key
+        ):
+            return child
+    return None
+
+
+def _prop_is_hidden(prop):
+    from kist.sexpr import find_one
+
+    effects = find_one(prop, "effects")
+    if effects is None:
+        return False
+    hide = find_one(effects, "hide")
+    return hide is not None and len(hide) > 1 and str(hide[1]) == "yes"
+
+
+def _make_prop_visible(prop):
+    """Remove (hide yes) from a property's effects."""
+    from kist.sexpr import find_one
+
+    effects = find_one(prop, "effects")
+    if effects is None:
+        return
+    effects[:] = [
+        child
+        for child in effects
+        if not (isinstance(child, list) and child and child[0] == "hide")
+    ]
+
+
 # --- edge cases ---
 
 

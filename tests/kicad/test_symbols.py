@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from kist.kicad.symbols import SymbolLibrary
+from kist.kicad.symbols import SymbolLibrary, get_visible_properties
 from kist.sexpr import Atom, dumps, find_one
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "kicad"
@@ -264,6 +264,61 @@ def test_update_properties_raises_for_missing_symbol():
     lib = SymbolLibrary.empty()
     with pytest.raises(KeyError, match="NOPE"):
         lib.update_properties("NOPE", {"Value": "x"})
+
+
+# -- get_visible_properties ---
+
+
+def test_get_visible_properties_from_fixture():
+    """Device_RCL symbols have Reference and Value visible."""
+    lib = SymbolLibrary.load(DEVICE_RCL)
+    sym = lib.get_symbol("R")
+    assert sym is not None
+    visible = get_visible_properties(sym)
+    assert "Reference" in visible
+    assert "Value" in visible
+    # Hidden properties
+    assert "Footprint" not in visible
+    assert "Datasheet" not in visible
+
+
+def test_get_visible_properties_all_hidden():
+    """A symbol with only hidden properties returns empty set."""
+    sym = [
+        Atom("symbol"),
+        Atom("X", quoted=True),
+        [
+            Atom("property"),
+            Atom("Foo", quoted=True),
+            Atom("bar", quoted=True),
+            [Atom("at"), Atom("0"), Atom("0"), Atom("0")],
+            [
+                Atom("effects"),
+                [Atom("font"), [Atom("size"), Atom("1.27"), Atom("1.27")]],
+                [Atom("hide"), Atom("yes")],
+            ],
+        ],
+    ]
+    assert get_visible_properties(sym) == set()
+
+
+def test_get_visible_properties_no_hide_means_visible():
+    """A property without (hide yes) in effects is visible."""
+    sym = [
+        Atom("symbol"),
+        Atom("X", quoted=True),
+        [
+            Atom("property"),
+            Atom("MyField", quoted=True),
+            Atom("val", quoted=True),
+            [Atom("at"), Atom("0"), Atom("0"), Atom("0")],
+            [
+                Atom("effects"),
+                [Atom("font"), [Atom("size"), Atom("1.27"), Atom("1.27")]],
+            ],
+        ],
+    ]
+    assert "MyField" in get_visible_properties(sym)
 
 
 # -- Snapshot ---
