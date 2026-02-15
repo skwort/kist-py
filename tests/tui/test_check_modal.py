@@ -29,16 +29,16 @@ async def test_check_modal_shows_issue_count():
     app = ModalApp()
     async with app.run_test():
         await app.push_screen(LibraryCheckModal(issues))
-        header = app.screen.query_one("#check-header", Label)
-        assert "2 issues found" in str(header.content)
+        title = app.screen.query_one("#check-container").border_title
+        assert "2 issues found" in str(title)
 
 
 async def test_check_modal_shows_all_clean():
     app = ModalApp()
     async with app.run_test():
         await app.push_screen(LibraryCheckModal([]))
-        header = app.screen.query_one("#check-header", Label)
-        assert "All clean" in str(header.content)
+        title = app.screen.query_one("#check-container").border_title
+        assert "All clean" in str(title)
 
 
 async def test_check_modal_shows_issue_details():
@@ -78,5 +78,5 @@ async def test_check_modal_singular_issue():
     app = ModalApp()
     async with app.run_test():
         await app.push_screen(LibraryCheckModal(issues))
-        header = app.screen.query_one("#check-header", Label)
-        assert "1 issue found" in str(header.content)
+        title = app.screen.query_one("#check-container").border_title
+        assert "1 issue found" in str(title)
