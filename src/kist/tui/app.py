@@ -18,6 +18,8 @@ from kist.core.database import PartsDatabase
 from kist.core.library import find_library
 from kist.core.sync import sync_sym_lib_table, sync_symbols
 from kist.errors import LibraryNotFoundError
+from kist.kicad.discovery import detect_kicad
+from kist.kicad.indexer import LibraryIndex, load_or_build_index
 from kist.models.config import LibraryConfig
 from kist.models.part import Ipn, Part
 from kist.tui.themes import NULL_THEME
@@ -46,6 +48,7 @@ class KistApp(App):
         super().__init__()
         self._start_screen = start_screen
         self._url_or_mpn = url_or_mpn
+        self._library_index: LibraryIndex | None = None
 
     def get_default_screen(self) -> Screen:
         from kist.tui.screens.browse import BrowseScreen
@@ -102,6 +105,20 @@ class KistApp(App):
         assert self.library_path is not None
         _save_library_config(self.library_path, config)
         self.library_config = config
+
+    def get_library_index(self) -> LibraryIndex | None:
+        """Return the library index, building it lazily on first access."""
+        if self._library_index is not None:
+            return self._library_index
+        env = detect_kicad()
+        if env is None:
+            return None
+        self._library_index = load_or_build_index(
+            env,
+            kist_root=self.library_path,
+            config=self.library_config,
+        )
+        return self._library_index
 
     def _after_mutation(self, db: PartsDatabase) -> None:
         """Post-mutation side effects: sync symbols, lib table, UI refresh."""

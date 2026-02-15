@@ -190,6 +190,20 @@ PartForm.-readonly .section:focus-within {
     hatch: right $surface-lighten-1 70%;
 }
 
+.browse-btn {
+    width: 3;
+    min-width: 3;
+    padding: 0;
+    background: $panel;
+    color: $foreground;
+    text-style: none;
+    border: none;
+    height: 1;
+    &:hover {
+        background: $accent;
+    }
+}
+
 .spacer {
     height: 1;
 }
