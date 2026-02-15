@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
 from textual import getters
@@ -15,25 +16,9 @@ from kist.core.config import load_global_config, save_global_config
 from kist.tui.app import KistApp
 
 
-def _theme_options() -> list[tuple[str, str]]:
-    """Build select options from Textual's registered themes."""
-    # Textual ships built-in themes; we add null alongside them.
-    # The full list is discovered at runtime from the app, but for the
-    # select widget we use a curated list of well-known themes.
-    return [
-        ("null", "null"),
-        ("textual-dark", "textual-dark"),
-        ("textual-light", "textual-light"),
-        ("nord", "nord"),
-        ("gruvbox", "gruvbox"),
-        ("catppuccin-mocha", "catppuccin-mocha"),
-        ("dracula", "dracula"),
-        ("tokyo-night", "tokyo-night"),
-        ("monokai", "monokai"),
-        ("flexoki", "flexoki"),
-        ("catppuccin-latte", "catppuccin-latte"),
-        ("solarized-light", "solarized-light"),
-    ]
+def _theme_options(available: Iterable[str]) -> list[tuple[str, str]]:
+    """Build select options from the app's registered themes."""
+    return [(name, name) for name in sorted(available)]
 
 
 class SettingsModal(ModalScreen):
@@ -64,7 +49,7 @@ class SettingsModal(ModalScreen):
                     with Horizontal(classes="form-field"):
                         yield Label("Theme", classes="field-label")
                         yield Select(
-                            _theme_options(),
+                            _theme_options(self.app.available_themes),
                             id="setting-theme",
                             classes="field-value",
                             prompt="Select theme",
@@ -126,7 +111,14 @@ class SettingsModal(ModalScreen):
         # Load current values
         self._previous_theme = self.app.theme or "null"
         global_cfg = load_global_config()
-        self.query_one("#setting-theme", Select).value = global_cfg.theme
+        theme_select = self.query_one("#setting-theme", Select)
+        # Fall back to active theme if saved value isn't a registered theme
+        theme = (
+            global_cfg.theme
+            if global_cfg.theme in self.app.available_themes
+            else self._previous_theme
+        )
+        theme_select.value = theme
 
         lib_cfg = self.app.library_config
         if self._library_path is not None and lib_cfg is not None:
