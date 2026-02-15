@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kist"
 version = "0.1.0"
-description = "KiCad parts manager"
+description = "Lightweight component library manager for KiCad"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
