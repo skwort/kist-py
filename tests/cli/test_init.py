@@ -56,6 +56,14 @@ def test_init_already_initialised(tmp_path):
     assert "Already initialised" in result.output
 
 
+def test_init_no_tui_flag(tmp_path):
+    """--no-tui forces non-interactive init even in a TTY."""
+    result = runner.invoke(app, ["init", "--path", str(tmp_path), "--no-tui"])
+    assert result.exit_code == 0
+    assert "Initialised" in result.output
+    assert (tmp_path / ".kist" / "config.toml").exists()
+
+
 # --- kist link ---
 
 
