@@ -3,7 +3,8 @@ Library index builder.
 
 Scans KiCad's installed library directories to build a searchable
 catalog of footprints and symbols.  Footprints are indexed by directory
-listing (fast); symbols are parsed via :class:`SymbolLibrary`.
+listing (fast); symbols use a lightweight regex scan to extract
+top-level symbol names without full S-expression parsing.
 """
 
 from __future__ import annotations
@@ -11,16 +12,27 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import platformdirs
 
 from kist.kicad.discovery import KiCadEnvironment, parse_lib_table, resolve_uri
-from kist.kicad.symbols import SymbolLibrary
 from kist.models.config import LibraryConfig
 
 log = logging.getLogger(__name__)
+
+# Top-level symbol names in .kicad_sym files: one tab indent, then (symbol "NAME"
+# This avoids full S-expression parsing (~50x faster for 225 libraries).
+_SYMBOL_NAME_RE = re.compile(r'^\t\(symbol\s+"([^"]+)"', re.MULTILINE)
+
+
+def _scan_symbol_names(path: Path) -> list[str]:
+    """Extract top-level symbol names from a .kicad_sym file via regex."""
+    text = path.read_text(encoding="utf-8")
+    return _SYMBOL_NAME_RE.findall(text)
+
 
 # -- Data types ---
 
@@ -106,8 +118,8 @@ def build_symbol_index(
     """
     Build a symbol index from KiCad's ``sym-lib-table`` and kist's own symbols.
 
-    Parses each ``.kicad_sym`` file using :class:`SymbolLibrary` to
-    extract symbol names.
+    Uses a lightweight regex scan to extract top-level symbol names
+    from ``.kicad_sym`` files without full S-expression parsing.
     """
     items: list[LibraryItem] = []
 
@@ -117,8 +129,7 @@ def build_symbol_index(
         sym_path = resolve_uri(entry.uri, env)
         if sym_path.is_file():
             try:
-                lib = SymbolLibrary.load(sym_path)
-                for name in lib.symbols():
+                for name in _scan_symbol_names(sym_path):
                     items.append(
                         LibraryItem(
                             library=entry.name,
@@ -127,7 +138,7 @@ def build_symbol_index(
                         )
                     )
             except Exception:
-                log.warning("Failed to parse symbol library: %s", sym_path)
+                log.warning("Failed to scan symbol library: %s", sym_path)
 
     # Kist library symbols
     if kist_root and config:
@@ -135,8 +146,7 @@ def build_symbol_index(
         if sym_dir.is_dir():
             for sym_file in sorted(sym_dir.glob("*.kicad_sym")):
                 try:
-                    lib = SymbolLibrary.load(sym_file)
-                    for name in lib.symbols():
+                    for name in _scan_symbol_names(sym_file):
                         items.append(
                             LibraryItem(
                                 library=sym_file.stem,
@@ -145,7 +155,7 @@ def build_symbol_index(
                             )
                         )
                 except Exception:
-                    log.warning("Failed to parse kist symbol library: %s", sym_file)
+                    log.warning("Failed to scan kist symbol library: %s", sym_file)
 
     return items
 
