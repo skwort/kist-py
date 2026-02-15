@@ -38,6 +38,9 @@ def init_library(
     footprints_dir: str | None = None,
     models_dir: str | None = None,
     blocks_dir: str | None = None,
+    library_prefix: str | None = None,
+    separator: str | None = None,
+    suppliers: list[str] | None = None,
     categories: dict[str, CategoryDef] | None = None,
 ) -> Path:
     """
@@ -56,6 +59,9 @@ def init_library(
         footprints_dir=footprints_dir,
         models_dir=models_dir,
         blocks_dir=blocks_dir,
+        library_prefix=library_prefix,
+        separator=separator,
+        suppliers=suppliers,
     )
     config.library_id = str(uuid.uuid4())
     config.categories = (
