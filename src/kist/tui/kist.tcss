@@ -536,12 +536,11 @@ LibrarySearchModal {
 }
 
 #libsearch-input {
-    dock: top;
+    height: 1;
     margin: 0 0 1 0;
 }
 
 #libsearch-status {
-    dock: top;
     height: 1;
     text-opacity: 60%;
     padding: 0 1;
