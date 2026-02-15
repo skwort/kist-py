@@ -158,13 +158,19 @@ def _cache_dir() -> Path:
 
 
 def _cache_key(env: KiCadEnvironment) -> str:
-    """Hash the lib-table mtimes to detect changes."""
+    """Hash lib-table mtimes and resolved variable paths to detect changes.
+
+    Including the resolved paths ensures the cache invalidates when
+    variables change (e.g. Nix store path update, env var override).
+    """
     parts: list[str] = []
     for table_name in ("fp-lib-table", "sym-lib-table"):
         table_path = env.config_dir / table_name
         if table_path.is_file():
             mtime = table_path.stat().st_mtime
             parts.append(f"{table_path}:{mtime}")
+    for var_name in sorted(env.variables):
+        parts.append(f"{var_name}={env.variables[var_name]}")
     return hashlib.md5("|".join(parts).encode()).hexdigest()
 
 
