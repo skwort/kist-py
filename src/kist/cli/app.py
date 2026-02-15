@@ -48,8 +48,19 @@ def init(
     blocks_dir: str | None = typer.Option(
         None, "--blocks-dir", help="Design blocks directory name."
     ),
+    no_tui: bool = typer.Option(
+        False, "--no-tui", help="Skip interactive wizard, use CLI defaults."
+    ),
 ) -> None:
     """Initialise a new kist parts library."""
+    import sys
+
+    if not no_tui and sys.stdin.isatty():
+        from kist.tui.app import run_tui
+
+        run_tui(start_screen="init", init_path=path)
+        return
+
     from kist.core.library import init_library
     from kist.errors import LibraryExistsError
 
