@@ -92,3 +92,6 @@ minversion = "9.0"
 addopts = "-ra -q --strict-markers"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (skip with '-m \"not slow\"')",
+]
