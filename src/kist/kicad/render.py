@@ -180,6 +180,249 @@ def _arc_center(
 # -- Text drawing ---
 
 
+@dataclass(frozen=True)
+class _TextRun:
+    text: str
+    scale: float = 1.0
+    baseline_shift_em: float = 0.0
+    overbar: bool = False
+
+
+@dataclass(frozen=True)
+class _PlacedTextRun:
+    run: _TextRun
+    x: float
+    y: float
+    bbox: tuple[int, int, int, int]
+    font: PILImageFont.FreeTypeFont | PILImageFont.ImageFont
+
+
+def _font_pixel_size(
+    font: PILImageFont.FreeTypeFont | PILImageFont.ImageFont,
+) -> int:
+    size = getattr(font, "size", None)
+    if isinstance(size, int):
+        return size
+    return 12
+
+
+def _extract_braced(text: str, start: int) -> tuple[str, int]:
+    """Extract the braced payload starting at *start* ('{')."""
+    if start >= len(text) or text[start] != "{":
+        return "", start
+    depth = 0
+    out: list[str] = []
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == "{":
+            if depth > 0:
+                out.append(ch)
+            depth += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                return "".join(out), i + 1
+            if depth < 0:
+                return "", start
+            out.append(ch)
+            continue
+        if depth > 0:
+            out.append(ch)
+    return "", start
+
+
+def _merge_text_runs(runs: list[_TextRun]) -> list[_TextRun]:
+    merged: list[_TextRun] = []
+    for run in runs:
+        if not run.text:
+            continue
+        if (
+            merged
+            and merged[-1].scale == run.scale
+            and merged[-1].baseline_shift_em == run.baseline_shift_em
+            and merged[-1].overbar == run.overbar
+        ):
+            prev = merged[-1]
+            merged[-1] = _TextRun(
+                text=prev.text + run.text,
+                scale=prev.scale,
+                baseline_shift_em=prev.baseline_shift_em,
+                overbar=prev.overbar,
+            )
+            continue
+        merged.append(run)
+    return merged
+
+
+def _parse_kicad_text_runs(
+    text: str,
+    scale: float = 1.0,
+    baseline_shift_em: float = 0.0,
+    overbar: bool = False,
+) -> list[_TextRun]:
+    """
+    Parse KiCad-style text markup into positioned runs.
+
+    Supported directives:
+    - ``~{...}``: overbar
+    - ``^{...}``: superscript
+    - ``_{...}``: subscript
+    """
+    runs: list[_TextRun] = []
+    literal: list[str] = []
+    i = 0
+
+    def _flush_literal() -> None:
+        if literal:
+            runs.append(
+                _TextRun(
+                    text="".join(literal),
+                    scale=scale,
+                    baseline_shift_em=baseline_shift_em,
+                    overbar=overbar,
+                )
+            )
+            literal.clear()
+
+    while i < len(text):
+        ch = text[i]
+        if ch in "^_~" and i + 1 < len(text) and text[i + 1] == "{":
+            _flush_literal()
+            inner, next_i = _extract_braced(text, i + 1)
+            if next_i == i + 1:
+                literal.append(ch)
+                i += 1
+                continue
+
+            if ch == "^":
+                runs.extend(
+                    _parse_kicad_text_runs(
+                        inner,
+                        scale=scale * 0.72,
+                        baseline_shift_em=baseline_shift_em - 0.55 * scale,
+                        overbar=overbar,
+                    )
+                )
+            elif ch == "_":
+                runs.extend(
+                    _parse_kicad_text_runs(
+                        inner,
+                        scale=scale * 0.72,
+                        baseline_shift_em=baseline_shift_em + 0.28 * scale,
+                        overbar=overbar,
+                    )
+                )
+            else:
+                runs.extend(
+                    _parse_kicad_text_runs(
+                        inner,
+                        scale=scale,
+                        baseline_shift_em=baseline_shift_em,
+                        overbar=True,
+                    )
+                )
+            i = next_i
+            continue
+
+        literal.append(ch)
+        i += 1
+
+    _flush_literal()
+    return _merge_text_runs(runs)
+
+
+def _render_text_runs_image(
+    text: str,
+    font: PILImageFont.FreeTypeFont | PILImageFont.ImageFont,
+    color: tuple[int, ...],
+) -> PILImage.Image:
+    """Render KiCad-marked-up text to an RGBA image."""
+    from PIL import Image, ImageDraw
+
+    runs = _parse_kicad_text_runs(text)
+    if not runs:
+        return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+
+    base_px = _font_pixel_size(font)
+    probe = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    probe_draw = ImageDraw.Draw(probe)
+
+    placed: list[_PlacedTextRun] = []
+    cursor = 0.0
+    min_x = float("inf")
+    min_y = float("inf")
+    max_x = float("-inf")
+    max_y = float("-inf")
+
+    for run in runs:
+        run_font = _get_font(max(6, round(base_px * run.scale)))
+        getmetrics = getattr(run_font, "getmetrics", None)
+        if callable(getmetrics):
+            try:
+                ascent, _ = getmetrics()
+            except Exception:
+                ascent = max(1, round(base_px * run.scale * 0.8))
+        else:
+            ascent = max(1, round(base_px * run.scale * 0.8))
+
+        draw_y = run.baseline_shift_em * base_px - ascent
+        bbox_raw = probe_draw.textbbox((cursor, draw_y), run.text, font=run_font)
+        bbox = (
+            int(bbox_raw[0]),
+            int(bbox_raw[1]),
+            int(bbox_raw[2]),
+            int(bbox_raw[3]),
+        )
+        try:
+            advance = float(probe_draw.textlength(run.text, font=run_font))
+        except Exception:
+            advance = float(bbox[2] - bbox[0])
+
+        placed.append(
+            _PlacedTextRun(run=run, x=cursor, y=draw_y, bbox=bbox, font=run_font)
+        )
+        bbox_min_y = bbox[1]
+        bbox_max_y = bbox[3]
+        if run.overbar:
+            bar_w = max(1, round(_font_pixel_size(run_font) * 0.08))
+            gap = max(1, round(_font_pixel_size(run_font) * 0.12))
+            bar_y = bbox[1] - gap
+            bbox_min_y = min(bbox_min_y, bar_y - bar_w)
+            bbox_max_y = max(bbox_max_y, bar_y + bar_w)
+        min_x = min(min_x, bbox[0])
+        min_y = min(min_y, bbox_min_y)
+        max_x = max(max_x, bbox[2])
+        max_y = max(max_y, bbox_max_y)
+        cursor += advance
+
+    if not placed:
+        return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+
+    pad = 2
+    width = max(1, int(math.ceil(max_x - min_x)) + 2 * pad)
+    height = max(1, int(math.ceil(max_y - min_y)) + 2 * pad)
+    off_x = -min_x + pad
+    off_y = -min_y + pad
+
+    txt_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    txt_draw = ImageDraw.Draw(txt_img)
+
+    for item in placed:
+        draw_x = item.x + off_x
+        draw_y = item.y + off_y
+        txt_draw.text((draw_x, draw_y), item.run.text, font=item.font, fill=color)
+        if item.run.overbar:
+            left = int(item.bbox[0] + off_x)
+            right = int(item.bbox[2] + off_x)
+            bar_w = max(1, round(_font_pixel_size(item.font) * 0.08))
+            gap = max(1, round(_font_pixel_size(item.font) * 0.12))
+            bar_y = int(item.bbox[1] + off_y) - gap
+            txt_draw.line((left, bar_y, right, bar_y), fill=color, width=bar_w)
+
+    return txt_img
+
+
 def _draw_text(
     img: PILImage.Image,
     text: str,
@@ -191,17 +434,9 @@ def _draw_text(
     align: str = "center",
 ) -> None:
     """Draw *text* centered at (cx, cy) with rotation *angle* degrees."""
-    from PIL import Image, ImageDraw
+    from PIL import Image
 
-    tmp = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-    tmp_draw = ImageDraw.Draw(tmp)
-    bbox = tmp_draw.textbbox((0, 0), text, font=font)
-    tw = int(bbox[2] - bbox[0])
-    th = int(bbox[3] - bbox[1])
-
-    txt_img = Image.new("RGBA", (tw + 4, th + 4), (0, 0, 0, 0))
-    txt_draw = ImageDraw.Draw(txt_img)
-    txt_draw.text((-bbox[0] + 2, -bbox[1] + 2), text, font=font, fill=color)
+    txt_img = _render_text_runs_image(text, font, color)
 
     if angle != 0:
         txt_img = txt_img.rotate(angle, expand=True, resample=Image.Resampling.BICUBIC)

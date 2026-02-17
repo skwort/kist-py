@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from kist.kicad import render as render_mod
 from kist.kicad.discovery import KiCadEnvironment
 from kist.kicad.render import (
     RenderTheme,
@@ -247,3 +248,45 @@ def test_render_symbol_draws_pin_name_and_number():
     visible_pixels = sum(1 for v in visible_data if _alpha_value(v) > 0)
     hidden_pixels = sum(1 for v in hidden_data if _alpha_value(v) > 0)
     assert visible_pixels > hidden_pixels
+
+
+def test_parse_kicad_text_runs_markup():
+    runs = render_mod._parse_kicad_text_runs("1^{a}_{b} ~{VDD}")
+    assert any(run.text == "a" and run.baseline_shift_em < 0 for run in runs)
+    assert any(run.text == "b" and run.baseline_shift_em > 0 for run in runs)
+    assert any(run.text == "VDD" and run.overbar for run in runs)
+
+
+def test_render_symbol_handles_kicad_text_markup():
+    sym = [
+        "symbol",
+        "X",
+        [
+            "property",
+            "Value",
+            "~{VDD}^{2}_{n}",
+            ["at", "0", "0", "0"],
+            ["effects", ["font", ["size", "1.27", "1.27"]]],
+        ],
+    ]
+    image = render_symbol(sym, scale_px_per_mm=120, padding=20)
+    assert image.width > 0
+    assert image.height > 0
+
+
+def test_overbar_adds_visible_strokes():
+    from kist.kicad.render import _render_text_runs_image
+
+    font = render_mod._get_font(24)
+    plain = _render_text_runs_image("VDD", font, (255, 255, 255, 255))
+    over = _render_text_runs_image("~{VDD}", font, (255, 255, 255, 255))
+
+    if hasattr(plain, "get_flattened_data"):
+        plain_data = plain.get_flattened_data()
+        over_data = over.get_flattened_data()
+    else:
+        plain_data = plain.getdata()
+        over_data = over.getdata()
+    plain_count = sum(1 for px in plain_data if _alpha_value(px) > 0)
+    over_count = sum(1 for px in over_data if _alpha_value(px) > 0)
+    assert over_count > plain_count
