@@ -101,9 +101,11 @@ class DetailModal(ModalScreen):
         self.app.save_part(new_part, replacing=self._part.ipn)
 
         self._part = new_part
-        self._form_snapshot = form.to_dict()
+        form.clear()
+        form.load_part(new_part)
         self.query_one("#detail-container").border_title = new_part.name
         form.mode = "readonly"
+        self._form_snapshot = form.to_dict()
         self.refresh_bindings()
         self.notify(f"Saved: {new_part.name}")
 

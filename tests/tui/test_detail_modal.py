@@ -212,6 +212,28 @@ async def test_edit_save_persists_changes(browse_app, library_path):
         assert parts[0].description == "Updated MCU description"
 
 
+async def test_edit_save_refreshes_readonly_symbol_label(browse_app, library_path):
+    """Saving in edit mode updates readonly label values in the open modal."""
+    part = _persisted_part(library_path)
+
+    async with browse_app.run_test() as pilot:
+        await browse_app.push_screen(DetailModal(part))
+        await pilot.pause()
+
+        await pilot.press("e")
+        form = browse_app.screen.query_one("#detail-form", PartForm)
+        assert form.mode == "editable"
+
+        symbol_input = form.query_one("#symbol", Input)
+        symbol_input.value = "MCU_ST:STM32F405_NEW"
+
+        await pilot.press("ctrl+s")
+        await pilot.pause()
+
+        assert form.mode == "readonly"
+        assert form.query_one("#symbol-ro", Label).content == "MCU_ST:STM32F405_NEW"
+
+
 async def test_save_ignored_in_readonly_mode(browse_app, library_path):
     """ctrl+s does nothing when not in edit mode."""
     part = _persisted_part(library_path)
