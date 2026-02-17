@@ -9,7 +9,7 @@ from kist.core.database import PartsDatabase
 from kist.kicad.lib_table import generate_sym_lib_table, update_sym_lib_table
 from kist.kicad.mapping import library_filename
 from kist.kicad.symbols import SymbolLibrary, get_visible_properties
-from kist.kicad.templates import symbol_for_part
+from kist.kicad.templates import spec_property_key, symbol_for_part
 from kist.models.config import LibraryConfig
 
 SYM_LIB_TABLE = "sym-lib-table"
@@ -53,7 +53,14 @@ def sync_symbols(
 
         for part in parts:
             existing = lib.get_symbol(part.name)
-            visible = get_visible_properties(existing) if existing else None
+            visible = None
+            if existing:
+                visible_props = get_visible_properties(existing)
+                spec_props = {
+                    spec_property_key(spec_key)
+                    for spec_key in (part.specifications or {})
+                }
+                visible = visible_props & spec_props
             lib.set_symbol(
                 part.name,
                 symbol_for_part(part, config.categories, visible_specs=visible),
