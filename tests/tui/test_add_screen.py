@@ -16,6 +16,8 @@ from kist.tui.app import KistApp
 from kist.tui.screens.add import AddScreen
 from kist.tui.widgets.part_form import PartForm
 
+pytestmark = pytest.mark.slow
+
 
 class AddScreenApp(KistApp):
     """Minimal app for testing AddScreen in isolation."""

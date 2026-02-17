@@ -16,6 +16,8 @@ from kist.tui.screens.browse import BrowseScreen
 from kist.tui.screens.detail import ConfirmModal, DetailModal
 from kist.tui.widgets.part_form import PartForm
 
+pytestmark = pytest.mark.slow
+
 
 def _make_proprietary_part() -> ProprietaryPart:
     return ProprietaryPart(
