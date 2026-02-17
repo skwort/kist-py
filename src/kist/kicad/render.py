@@ -188,6 +188,7 @@ def _draw_text(
     angle: float,
     font: PILImageFont.FreeTypeFont | PILImageFont.ImageFont,
     color: tuple[int, ...],
+    align: str = "center",
 ) -> None:
     """Draw *text* centered at (cx, cy) with rotation *angle* degrees."""
     from PIL import Image, ImageDraw
@@ -206,7 +207,12 @@ def _draw_text(
         txt_img = txt_img.rotate(angle, expand=True, resample=Image.Resampling.BICUBIC)
 
     pw, ph = txt_img.size
-    paste_x = int(cx - pw / 2)
+    if align == "left":
+        paste_x = int(cx)
+    elif align == "right":
+        paste_x = int(cx - pw)
+    else:
+        paste_x = int(cx - pw / 2)
     paste_y = int(cy - ph / 2)
     img.paste(txt_img, (paste_x, paste_y), txt_img)
 
@@ -330,8 +336,143 @@ def _collect_visible_properties(sym: list) -> list[dict]:
     return props
 
 
+def _font_height_from_effects(effects: list | None, default: float = 1.27) -> float:
+    if effects is None:
+        return default
+    font_node = find_one(effects, "font")
+    if font_node is None:
+        return default
+    size_node = find_one(font_node, "size")
+    if size_node and len(size_node) > 1:
+        return _fl(size_node[1])
+    return default
+
+
+def _effects_hidden(effects: list | None) -> bool:
+    if effects is None:
+        return False
+    hide = find_one(effects, "hide")
+    return bool(hide and len(hide) > 1 and str(hide[1]) == "yes")
+
+
+def _symbol_pin_config(sym: list) -> tuple[bool, bool, float]:
+    """Return (show_pin_names, show_pin_numbers, pin_name_offset_mm)."""
+    show_names = True
+    show_numbers = True
+    name_offset = 0.508
+
+    pin_names = find_one(sym, "pin_names")
+    if pin_names:
+        hide = find_one(pin_names, "hide")
+        if hide and len(hide) > 1 and str(hide[1]) == "yes":
+            show_names = False
+        offset = find_one(pin_names, "offset")
+        if offset and len(offset) > 1:
+            name_offset = _fl(offset[1])
+
+    pin_numbers = find_one(sym, "pin_numbers")
+    if pin_numbers:
+        hide = find_one(pin_numbers, "hide")
+        if hide and len(hide) > 1 and str(hide[1]) == "yes":
+            show_numbers = False
+
+    return show_names, show_numbers, name_offset
+
+
+def _collect_pin_labels(prims: list[list], sym: list) -> list[dict]:
+    """Collect visible pin name/number labels with placement and font info."""
+    show_names, show_numbers, name_offset = _symbol_pin_config(sym)
+    labels: list[dict] = []
+
+    for p in prims:
+        if p[0] != "pin":
+            continue
+
+        at = find_one(p, "at")
+        ln = find_one(p, "length")
+        if not at or not ln:
+            continue
+
+        px, py = _fl(at[1]), _fl(at[2])
+        angle = _fl(at[3]) if len(at) > 3 else 0.0
+        length = _fl(ln[1])
+        rad = math.radians(angle)
+        ux, uy = math.cos(rad), math.sin(rad)
+        tx, ty = px + length * ux, py + length * uy
+
+        is_vertical = abs(uy) > 0.5
+
+        if abs(ux) > 0.5:
+            name_align = "left" if ux > 0 else "right"
+        else:
+            name_align = "center"
+
+        side_dx = 0.0
+        name_angle = 90.0 if is_vertical else 0.0
+
+        if show_names:
+            name = find_one(p, "name")
+            if name and len(name) > 1:
+                text = str(name[1])
+                effects = find_one(name, "effects")
+                if text and text != "~" and not _effects_hidden(effects):
+                    font_h = _font_height_from_effects(effects)
+                    name_distance = name_offset + 0.3 + (0.7 if is_vertical else 0.0)
+                    if is_vertical:
+                        # Keep vertical names on-pin-axis but push them farther
+                        # along the pin direction so long rotated names clear
+                        # the pin line.
+                        est_len = len(text) * font_h * 0.6
+                        name_distance += est_len * 0.3
+                    labels.append(
+                        {
+                            "text": text,
+                            # Name belongs on the symbol/body side of the pin.
+                            "x": tx + ux * name_distance + side_dx,
+                            "y": ty + uy * name_distance,
+                            "angle": name_angle,
+                            "align": name_align,
+                            "font_h": font_h,
+                        }
+                    )
+
+        if show_numbers:
+            number = find_one(p, "number")
+            if number and len(number) > 1:
+                text = str(number[1])
+                effects = find_one(number, "effects")
+                if text and text != "~" and not _effects_hidden(effects):
+                    font_h = _font_height_from_effects(effects)
+                    number_offset = max(0.7, font_h * 0.65)
+                    # Center on the pin, then shift perpendicular to the
+                    # pin direction so the number never sits on the line.
+                    center_x = (px + tx) / 2
+                    center_y = (py + ty) / 2
+                    if abs(ux) > 0.5:
+                        # Horizontal pins: number goes above the line.
+                        normal_x, normal_y = 0.0, 1.0
+                    else:
+                        # Vertical pins: number goes to the left of the line.
+                        normal_x, normal_y = -1.0, 0.0
+                    number_x = center_x + normal_x * number_offset + side_dx
+                    number_y = center_y + normal_y * number_offset
+                    labels.append(
+                        {
+                            "text": text,
+                            # Pin number is drawn above the pin in local coords.
+                            "x": number_x,
+                            "y": number_y,
+                            "angle": 90.0 if is_vertical else 0.0,
+                            "align": "center",
+                            "font_h": font_h,
+                        }
+                    )
+
+    return labels
+
+
 def _symbol_bounds(
-    prims: list[list], props: list[dict]
+    prims: list[list], props: list[dict], pin_labels: list[dict]
 ) -> tuple[float, float, float, float]:
     xs: list[float] = []
     ys: list[float] = []
@@ -392,6 +533,12 @@ def _symbol_bounds(
             xs.extend([x - est / 2, x + est / 2])
             ys.extend([y - prop["font_h"], y + prop["font_h"]])
 
+    for label in pin_labels:
+        est = len(label["text"]) * label["font_h"] * 0.6
+        x, y = label["x"], label["y"]
+        xs.extend([x - est / 2, x + est / 2])
+        ys.extend([y - label["font_h"], y + label["font_h"]])
+
     if not xs:
         return -5, -5, 5, 5
     return min(xs), min(ys), max(xs), max(ys)
@@ -418,7 +565,8 @@ def render_symbol(
 
     prims = _collect_symbol_primitives(sym, unit=unit)
     props = _collect_visible_properties(sym)
-    min_x, min_y, max_x, max_y = _symbol_bounds(prims, props)
+    pin_labels = _collect_pin_labels(prims, sym)
+    min_x, min_y, max_x, max_y = _symbol_bounds(prims, props, pin_labels)
 
     margin = 0.5
     min_x -= margin
@@ -528,6 +676,20 @@ def render_symbol(
         font = _get_font(font_px)
         _draw_text(
             img, prop["text"], tx(prop["x"]), ty(prop["y"]), prop["angle"], font, text_c
+        )
+
+    for label in pin_labels:
+        font_px = max(8, round(label["font_h"] * scale))
+        font = _get_font(font_px)
+        _draw_text(
+            img,
+            label["text"],
+            tx(label["x"]),
+            ty(label["y"]),
+            label["angle"],
+            font,
+            text_c,
+            align=label.get("align", "center"),
         )
 
     return img

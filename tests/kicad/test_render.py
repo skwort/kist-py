@@ -20,6 +20,14 @@ from kist.models.config import LibraryConfig
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "kicad"
 
 
+def _alpha_value(pixel: tuple[int, ...] | int | float | None) -> float:
+    if pixel is None:
+        return 0.0
+    if isinstance(pixel, tuple):
+        return float(pixel[0]) if pixel else 0.0
+    return float(pixel)
+
+
 def _make_sym_lib_table(config_dir: Path, sym_dir: Path, libraries: list[str]) -> None:
     entries = []
     for name in libraries:
@@ -179,3 +187,63 @@ def test_render_footprint_theme_layer_colors(tmp_path: Path):
     assert theme.footprint_courtyard in pixels
     assert theme.footprint_copper in pixels
     assert theme.footprint_pad in pixels
+
+
+def test_render_symbol_draws_pin_name_and_number():
+    sym_visible = [
+        "symbol",
+        "X",
+        [
+            "symbol",
+            "X_1_1",
+            [
+                "pin",
+                "passive",
+                "line",
+                ["at", "0", "0", "0"],
+                ["length", "2.54"],
+                ["name", "IN", ["effects", ["font", ["size", "1.27", "1.27"]]]],
+                ["number", "1", ["effects", ["font", ["size", "1.27", "1.27"]]]],
+            ],
+        ],
+    ]
+    sym_hidden = [
+        "symbol",
+        "X",
+        ["pin_names", ["hide", "yes"]],
+        ["pin_numbers", ["hide", "yes"]],
+        [
+            "symbol",
+            "X_1_1",
+            [
+                "pin",
+                "passive",
+                "line",
+                ["at", "0", "0", "0"],
+                ["length", "2.54"],
+                ["name", "IN", ["effects", ["font", ["size", "1.27", "1.27"]]]],
+                ["number", "1", ["effects", ["font", ["size", "1.27", "1.27"]]]],
+            ],
+        ],
+    ]
+
+    visible = render_symbol(sym_visible, scale_px_per_mm=120, padding=20)
+    hidden = render_symbol(sym_hidden, scale_px_per_mm=120, padding=20)
+
+    # With pin labels visible, rendered alpha coverage should be larger.
+    visible_alpha = visible.getchannel("A").getbbox()
+    hidden_alpha = hidden.getchannel("A").getbbox()
+    assert visible_alpha is not None
+    assert hidden_alpha is not None
+
+    alpha_visible = visible.getchannel("A")
+    alpha_hidden = hidden.getchannel("A")
+    if hasattr(alpha_visible, "get_flattened_data"):
+        visible_data = alpha_visible.get_flattened_data()
+        hidden_data = alpha_hidden.get_flattened_data()
+    else:
+        visible_data = alpha_visible.getdata()
+        hidden_data = alpha_hidden.getdata()
+    visible_pixels = sum(1 for v in visible_data if _alpha_value(v) > 0)
+    hidden_pixels = sum(1 for v in hidden_data if _alpha_value(v) > 0)
+    assert visible_pixels > hidden_pixels
