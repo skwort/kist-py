@@ -520,6 +520,25 @@ class PartForm(Static):
             return
         self.query_one(f"#{field}", Input).value = ref
 
+        if field != "symbol":
+            return
+
+        from kist.kicad.discovery import detect_kicad
+        from kist.kicad.indexer import linked_footprint_for_symbol
+
+        env = detect_kicad()
+        if env is None:
+            return
+
+        linked = linked_footprint_for_symbol(
+            ref,
+            env,
+            kist_root=getattr(self.app, "library_path", None),
+            config=getattr(self.app, "library_config", None),
+        )
+        if linked:
+            self.query_one("#footprint", Input).value = linked
+
     # -- Spec management ---
 
     def _submit_spec(self) -> None:

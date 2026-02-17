@@ -19,6 +19,7 @@ from pathlib import Path
 import platformdirs
 
 from kist.kicad.discovery import KiCadEnvironment, parse_lib_table, resolve_uri
+from kist.kicad.symbols import SymbolLibrary
 from kist.models.config import LibraryConfig
 
 log = logging.getLogger(__name__)
@@ -158,6 +159,79 @@ def build_symbol_index(
                     log.warning("Failed to scan kist symbol library: %s", sym_file)
 
     return items
+
+
+def _symbol_paths_for_library(
+    library: str,
+    env: KiCadEnvironment,
+    kist_root: Path | None = None,
+    config: LibraryConfig | None = None,
+) -> list[Path]:
+    """Return candidate .kicad_sym files for a logical symbol library name."""
+    paths: list[Path] = []
+    seen: set[Path] = set()
+
+    sym_table = env.config_dir / "sym-lib-table"
+    for entry in parse_lib_table(sym_table):
+        if entry.name != library:
+            continue
+        sym_path = resolve_uri(entry.uri, env)
+        if sym_path.is_file() and sym_path not in seen:
+            paths.append(sym_path)
+            seen.add(sym_path)
+
+    if kist_root and config:
+        kist_sym_path = kist_root / config.symbols_dir / f"{library}.kicad_sym"
+        if kist_sym_path.is_file() and kist_sym_path not in seen:
+            paths.append(kist_sym_path)
+
+    return paths
+
+
+def _linked_footprint_from_symbol_file(path: Path, symbol: str) -> str | None:
+    """Extract non-empty Footprint property for one symbol in one library file."""
+    try:
+        lib = SymbolLibrary.load(path)
+        sym = lib.get_symbol(symbol)
+        if sym is None:
+            return None
+        for child in sym:
+            if (
+                isinstance(child, list)
+                and len(child) > 2
+                and child[0] == "property"
+                and str(child[1]) == "Footprint"
+            ):
+                footprint = str(child[2]).strip()
+                return footprint or None
+    except Exception:
+        log.warning("Failed to resolve linked footprint from symbol library: %s", path)
+    return None
+
+
+def linked_footprint_for_symbol(
+    symbol_ref: str,
+    env: KiCadEnvironment,
+    kist_root: Path | None = None,
+    config: LibraryConfig | None = None,
+) -> str | None:
+    """
+    Resolve a symbol reference's linked footprint from KiCad symbol properties.
+
+    ``symbol_ref`` must be in ``Library:Symbol`` format.
+    """
+    if ":" not in symbol_ref:
+        return None
+    library, symbol = symbol_ref.split(":", 1)
+    if not library or not symbol:
+        return None
+
+    paths = _symbol_paths_for_library(library, env, kist_root, config)
+    for path in paths:
+        linked = _linked_footprint_from_symbol_file(path, symbol)
+        if linked:
+            return linked
+    return None
 
 
 # -- Caching ---

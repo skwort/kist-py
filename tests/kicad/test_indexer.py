@@ -11,6 +11,7 @@ from kist.kicad.indexer import (
     LibraryItem,
     build_footprint_index,
     build_symbol_index,
+    linked_footprint_for_symbol,
     load_or_build_index,
 )
 from kist.models.config import LibraryConfig
@@ -189,6 +190,36 @@ def test_symbol_index_skips_unparseable_files(kicad_env: KiCadEnvironment):
 
     items = build_symbol_index(kicad_env)
     assert items == []
+
+
+def test_linked_footprint_for_symbol_from_global_library(kicad_env: KiCadEnvironment):
+    sym_dir = kicad_env.variables["KICAD9_SYMBOL_DIR"]
+    fixture = FIXTURES / "Regulator_Current.kicad_sym"
+    (sym_dir / "Regulator_Current.kicad_sym").write_text(fixture.read_text())
+    _make_sym_lib_table(kicad_env.config_dir, sym_dir, ["Regulator_Current"])
+
+    linked = linked_footprint_for_symbol(
+        "Regulator_Current:HV100K5-G",
+        kicad_env,
+    )
+
+    assert linked == "Package_TO_SOT_SMD:SOT-223-3_TabPin2"
+
+
+def test_linked_footprint_for_symbol_returns_none_when_blank(
+    kicad_env: KiCadEnvironment,
+):
+    sym_dir = kicad_env.variables["KICAD9_SYMBOL_DIR"]
+    fixture = FIXTURES / "Device_RCL.kicad_sym"
+    (sym_dir / "Device_RCL.kicad_sym").write_text(fixture.read_text())
+    _make_sym_lib_table(kicad_env.config_dir, sym_dir, ["Device_RCL"])
+
+    linked = linked_footprint_for_symbol(
+        "Device_RCL:R",
+        kicad_env,
+    )
+
+    assert linked is None
 
 
 # -- load_or_build_index ---

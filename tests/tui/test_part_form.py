@@ -190,6 +190,43 @@ async def test_load_part_to_dict_roundtrip(editable_app):
         assert d["keywords"] == ["arm", "cortex"]
 
 
+async def test_symbol_selection_applies_linked_footprint(editable_app, monkeypatch):
+    monkeypatch.setattr("kist.kicad.discovery.detect_kicad", lambda: object())
+    monkeypatch.setattr(
+        "kist.kicad.indexer.linked_footprint_for_symbol",
+        lambda *args, **kwargs: "Package_TO_SOT_SMD:SOT-223-3_TabPin2",
+    )
+
+    async with editable_app.run_test():
+        form = editable_app.query_one("#form", PartForm)
+        form._on_library_search_result("Regulator_Current:HV100K5-G", "symbol")
+
+        assert form.query_one("#symbol", Input).value == "Regulator_Current:HV100K5-G"
+        assert (
+            form.query_one("#footprint", Input).value
+            == "Package_TO_SOT_SMD:SOT-223-3_TabPin2"
+        )
+
+
+async def test_symbol_selection_keeps_footprint_when_unlinked(
+    editable_app, monkeypatch
+):
+    monkeypatch.setattr("kist.kicad.discovery.detect_kicad", lambda: object())
+    monkeypatch.setattr(
+        "kist.kicad.indexer.linked_footprint_for_symbol",
+        lambda *args, **kwargs: None,
+    )
+
+    async with editable_app.run_test():
+        form = editable_app.query_one("#form", PartForm)
+        form.query_one("#footprint", Input).value = "Existing:Footprint"
+
+        form._on_library_search_result("Device_RCL:R", "symbol")
+
+        assert form.query_one("#symbol", Input).value == "Device_RCL:R"
+        assert form.query_one("#footprint", Input).value == "Existing:Footprint"
+
+
 # -- Inline category creation ---
 
 
