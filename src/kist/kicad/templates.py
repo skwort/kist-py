@@ -447,6 +447,24 @@ _TEMPLATES: dict[str, Callable] = {
     "inductor": inductor_symbol,
 }
 
+_RESERVED_PROPERTY_KEYS = frozenset(
+    {
+        "Reference",
+        "Value",
+        "Footprint",
+        "Datasheet",
+        "Description",
+        "ki_keywords",
+    }
+)
+
+
+def spec_property_key(spec_key: str) -> str:
+    """Map a part spec key to a non-conflicting KiCad property name."""
+    if spec_key in _RESERVED_PROPERTY_KEYS:
+        return f"spec_{spec_key}"
+    return spec_key
+
 
 def _spec_property(key: str, value: str, *, hidden: bool = True) -> list[SExpr]:
     """A specification property at (0,0,0).  Hidden by default."""
@@ -505,4 +523,5 @@ def _append_specs(
         return
     visible = visible_specs or set()
     for key, value in part.specifications.items():
-        tree.append(_spec_property(key, value, hidden=key not in visible))
+        prop_key = spec_property_key(key)
+        tree.append(_spec_property(prop_key, value, hidden=prop_key not in visible))

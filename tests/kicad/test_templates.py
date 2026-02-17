@@ -10,6 +10,7 @@ from kist.kicad.templates import (
     capacitor_symbol,
     inductor_symbol,
     resistor_symbol,
+    spec_property_key,
     stub_symbol,
     symbol_for_part,
 )
@@ -202,6 +203,22 @@ def test_visible_specs_not_hidden(jellybean_part: JellybeanPart):
     tol_prop = _find_property(sym, "tolerance")
     assert res_prop is not None and not _is_hidden(res_prop)
     assert tol_prop is not None and _is_hidden(tol_prop)
+
+
+def test_spec_property_key_prefixes_reserved_keys():
+    assert spec_property_key("Value") == "spec_Value"
+    assert spec_property_key("Reference") == "spec_Reference"
+    assert spec_property_key("resistance") == "resistance"
+
+
+def test_reserved_spec_keys_are_renamed(jellybean_part: JellybeanPart):
+    part = jellybean_part.model_copy(
+        update={"specifications": {"Value": "from-spec", "tolerance": "1%"}}
+    )
+    sym = symbol_for_part(part, CATS)
+    assert _find_property(sym, "spec_Value") is not None
+    assert _find_property(sym, "Value") is not None
+    assert _find_property(sym, "tolerance") is not None
 
 
 def test_proprietary_part_no_spec_properties(proprietary_part: ProprietaryPart):
