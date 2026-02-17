@@ -245,3 +245,35 @@ def test_load_or_build_both_types(kicad_env: KiCadEnvironment, tmp_path: Path):
 
     assert len(index.footprints) == 1
     assert len(index.symbols) == 3
+
+
+def test_load_or_build_refreshes_on_kist_symbol_changes(
+    kicad_env: KiCadEnvironment, tmp_path: Path
+):
+    """Kist symbol file changes invalidate the cache key."""
+    kist_root = tmp_path / "kist-lib"
+    sym_dir = kist_root / "symbols"
+    sym_dir.mkdir(parents=True)
+    config = LibraryConfig(symbols_dir="symbols")
+
+    fixture = FIXTURES / "Device_RCL.kicad_sym"
+    (sym_dir / "A.kicad_sym").write_text(fixture.read_text())
+
+    cache_dir = tmp_path / "cache"
+    index1 = load_or_build_index(
+        kicad_env,
+        kist_root=kist_root,
+        config=config,
+        cache_dir=cache_dir,
+    )
+    assert len(index1.symbols) == 3
+
+    # Add a second symbol library without touching KiCad lib-table files.
+    (sym_dir / "B.kicad_sym").write_text(fixture.read_text())
+    index2 = load_or_build_index(
+        kicad_env,
+        kist_root=kist_root,
+        config=config,
+        cache_dir=cache_dir,
+    )
+    assert len(index2.symbols) == 6

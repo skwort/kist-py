@@ -167,7 +167,40 @@ def _cache_dir() -> Path:
     return Path(platformdirs.user_cache_dir("kist"))
 
 
-def _cache_key(env: KiCadEnvironment) -> str:
+def _iter_kist_fingerprint_parts(
+    kist_root: Path | None,
+    config: LibraryConfig | None,
+) -> list[str]:
+    """Build fingerprint parts for kist-managed symbols/footprints."""
+    if kist_root is None or config is None:
+        return []
+
+    parts: list[str] = []
+    config_path = kist_root / ".kist" / "config.toml"
+    if config_path.is_file():
+        stat = config_path.stat()
+        parts.append(f"{config_path}:{stat.st_mtime_ns}:{stat.st_size}")
+
+    sym_dir = kist_root / config.symbols_dir
+    if sym_dir.is_dir():
+        for sym_file in sorted(sym_dir.glob("*.kicad_sym")):
+            stat = sym_file.stat()
+            parts.append(f"{sym_file}:{stat.st_mtime_ns}:{stat.st_size}")
+
+    fp_dir = kist_root / config.footprints_dir
+    if fp_dir.is_dir():
+        for mod_file in sorted(fp_dir.glob("*.pretty/*.kicad_mod")):
+            stat = mod_file.stat()
+            parts.append(f"{mod_file}:{stat.st_mtime_ns}:{stat.st_size}")
+
+    return parts
+
+
+def _cache_key(
+    env: KiCadEnvironment,
+    kist_root: Path | None = None,
+    config: LibraryConfig | None = None,
+) -> str:
     """Hash lib-table mtimes and resolved variable paths to detect changes.
 
     Including the resolved paths ensures the cache invalidates when
@@ -181,6 +214,7 @@ def _cache_key(env: KiCadEnvironment) -> str:
             parts.append(f"{table_path}:{mtime}")
     for var_name in sorted(env.variables):
         parts.append(f"{var_name}={env.variables[var_name]}")
+    parts.extend(_iter_kist_fingerprint_parts(kist_root, config))
     return hashlib.md5("|".join(parts).encode()).hexdigest()
 
 
@@ -220,7 +254,7 @@ def load_or_build_index(
     if cache_dir is None:
         cache_dir = _cache_dir()
 
-    key = _cache_key(env)
+    key = _cache_key(env, kist_root, config)
     cache_path = cache_dir / f"library_index_{key}.json"
 
     cached = _load_cache(cache_path)

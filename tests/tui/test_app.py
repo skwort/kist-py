@@ -3,7 +3,8 @@
 import pytest
 
 from kist.core.config import save_global_config
-from kist.models.config import GlobalConfig
+from kist.kicad.indexer import LibraryIndex
+from kist.models.config import GlobalConfig, LibraryConfig
 from kist.tui.app import KistApp
 from kist.tui.screens.add import AddScreen
 from kist.tui.screens.browse import BrowseScreen
@@ -118,3 +119,14 @@ async def test_saved_theme_applied_on_startup(tmp_path, monkeypatch):
     app = KistApp()
     async with app.run_test():
         assert app.theme == "nord"
+
+
+def test_update_library_config_invalidates_library_index(tmp_path, monkeypatch):
+    app = KistApp()
+    app.library_path = tmp_path
+    app._library_index = LibraryIndex(footprints=[], symbols=[])  # type: ignore[attr-defined]
+    monkeypatch.setattr("kist.tui.app._save_library_config", lambda *args, **kwargs: None)
+
+    app.update_library_config(LibraryConfig())
+
+    assert app._library_index is None  # type: ignore[attr-defined]
