@@ -494,9 +494,6 @@ class PartForm(Static):
         app: KistApp = self.app  # type: ignore[assignment]
         index: LibraryIndex | None = app.get_library_index()
         if index is None:
-            self.notify(
-                "KiCad not found -- cannot browse libraries", severity="warning"
-            )
             return
 
         if field == "symbol":
