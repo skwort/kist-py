@@ -82,6 +82,7 @@ class KistApp(App):
                 self.push_screen(InitScreen())
 
     def _discover_library(self) -> None:
+        self._library_index = None
         try:
             result = find_library()
             self.library_path = result.library_root
@@ -117,6 +118,7 @@ class KistApp(App):
         assert self.library_path is not None
         _save_library_config(self.library_path, config)
         self.library_config = config
+        self._library_index = None
 
     def get_library_index(self) -> LibraryIndex | None:
         """Return the library index, building it lazily on first access."""
@@ -139,6 +141,7 @@ class KistApp(App):
             symbol_files = sync_symbols(self.library_path, db, self.library_config)
             if self.project_dir:
                 sync_sym_lib_table(self.project_dir, symbol_files, self.library_config)
+        self._library_index = None
         self.parts_version += 1
 
     def format_title(self, title: str, sub_title: str) -> Content:
