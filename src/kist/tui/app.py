@@ -126,12 +126,20 @@ class KistApp(App):
             return self._library_index
         env = detect_kicad()
         if env is None:
+            self.notify("KiCad not found -- cannot browse libraries", severity="warning")
             return None
-        self._library_index = load_or_build_index(
-            env,
-            kist_root=self.library_path,
-            config=self.library_config,
-        )
+        try:
+            self._library_index = load_or_build_index(
+                env,
+                kist_root=self.library_path,
+                config=self.library_config,
+            )
+        except Exception as exc:
+            self.notify(
+                f"Failed to read KiCad library tables: {exc}",
+                severity="warning",
+            )
+            return None
         return self._library_index
 
     def _after_mutation(self, db: PartsDatabase) -> None:

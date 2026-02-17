@@ -3,6 +3,7 @@
 import pytest
 
 from kist.core.config import save_global_config
+from kist.kicad.discovery import KiCadEnvironment
 from kist.kicad.indexer import LibraryIndex
 from kist.models.config import GlobalConfig, LibraryConfig
 from kist.tui.app import KistApp
@@ -130,3 +131,43 @@ def test_update_library_config_invalidates_library_index(tmp_path, monkeypatch):
     app.update_library_config(LibraryConfig())
 
     assert app._library_index is None  # type: ignore[attr-defined]
+
+
+def test_get_library_index_warns_when_kicad_missing(monkeypatch):
+    app = KistApp()
+    notices: list[tuple[str, str]] = []
+
+    monkeypatch.setattr("kist.tui.app.detect_kicad", lambda: None)
+    monkeypatch.setattr(
+        app,
+        "notify",
+        lambda msg, severity="information", **kwargs: notices.append((msg, severity)),
+    )
+
+    assert app.get_library_index() is None
+    assert notices == [("KiCad not found -- cannot browse libraries", "warning")]
+
+
+def test_get_library_index_warns_when_index_build_fails(tmp_path, monkeypatch):
+    app = KistApp()
+    notices: list[tuple[str, str]] = []
+    env = KiCadEnvironment(
+        version="9.0",
+        config_dir=tmp_path / "config",
+        data_dir=tmp_path / "data",
+        variables={},
+    )
+
+    monkeypatch.setattr("kist.tui.app.detect_kicad", lambda: env)
+    monkeypatch.setattr(
+        "kist.tui.app.load_or_build_index",
+        lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("bad fp-lib-table")),
+    )
+    monkeypatch.setattr(
+        app,
+        "notify",
+        lambda msg, severity="information", **kwargs: notices.append((msg, severity)),
+    )
+
+    assert app.get_library_index() is None
+    assert notices == [("Failed to read KiCad library tables: bad fp-lib-table", "warning")]
