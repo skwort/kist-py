@@ -561,15 +561,43 @@ LibrarySearchModal {
     }
 }
 
-#libsearch-container {
+#libsearch-outer {
     width: 90%;
-    max-width: 100;
+    max-width: 140;
     height: 80%;
+}
+
+#libsearch-container {
+    width: 1fr;
+    height: 1fr;
     border: round $accent;
     border-title-color: $foreground;
     border-title-style: bold;
     background: $background;
     padding: 1 2;
+}
+
+#libsearch-preview {
+    width: 45;
+    height: 1fr;
+    border: round $panel;
+    border-title-color: $foreground 70%;
+    border-title-align: center;
+    background: $background;
+    padding: 1;
+    content-align: center middle;
+}
+
+#preview-placeholder {
+    width: 1fr;
+    height: 1fr;
+    content-align: center middle;
+    text-opacity: 40%;
+}
+
+#preview-image {
+    width: auto;
+    height: auto;
 }
 
 #libsearch-input {

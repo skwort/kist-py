@@ -2,17 +2,56 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Literal
+
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.timer import Timer
-from textual.widgets import DataTable, Footer, Input, Label
+from textual.widgets import DataTable, Footer, Input, Label, Select, Static
 
 from kist.kicad.indexer import LibraryItem
+from kist.kicad.render import RenderTheme
+from kist.tui.themes import render_theme_from_textual
+
+log = logging.getLogger(__name__)
 
 _MAX_ROWS = 200
 _DEBOUNCE_S = 0.15
+
+# textual_image must be pre-imported in run_tui() before Textual starts,
+# so that its terminal probe (get_cell_size) doesn't dump escape codes.
+_ImageWidget: type | None = None
+
+
+def _preview_available() -> bool:
+    """Check if textual_image is importable."""
+    global _ImageWidget  # noqa: PLW0603
+    if _ImageWidget is not None:
+        return True
+    try:
+        from textual_image.widget import Image
+
+        _ImageWidget = Image
+        return True
+    except ImportError:
+        return False
+
+
+@lru_cache(maxsize=8)
+def _load_symbol_library(path: Path, mtime_ns: int):
+    """Cached load of a .kicad_sym file, invalidated by mtime."""
+    del mtime_ns  # cache key only
+    from kist.kicad.symbols import SymbolLibrary
+
+    return SymbolLibrary.load(path)
 
 
 class LibrarySearchModal(ModalScreen[str | None]):
@@ -28,19 +67,49 @@ class LibrarySearchModal(ModalScreen[str | None]):
         Binding("escape", "cancel", "Cancel"),
     ]
 
-    def __init__(self, items: list[LibraryItem], title: str = "Footprints") -> None:
+    def __init__(
+        self,
+        items: list[LibraryItem],
+        title: str = "Footprints",
+        item_kind: Literal["symbol", "footprint"] | None = None,
+    ) -> None:
         super().__init__()
         self._items = items
         self._title = title
         self._filtered: list[LibraryItem] = list(items)
         self._debounce_timer: Timer | None = None
 
+        if item_kind is not None:
+            self._item_kind = item_kind
+        elif title.lower() == "symbols":
+            self._item_kind = "symbol"
+        else:
+            self._item_kind = "footprint"
+
+        self._sym_paths: dict[str, Path] = {}
+        self._fp_paths: dict[str, Path] = {}
+        self._has_preview = _preview_available()
+        self._preview_ready = False
+        self._preview_seq = 0
+        self._render_theme = RenderTheme()
+
+        # Multi-unit symbol state.
+        self._current_ref: str | None = None
+        self._current_units: list[int] = [1]
+        self._current_unit: int = 1
+
     def compose(self) -> ComposeResult:
-        with Vertical(id="libsearch-container") as container:
-            container.border_title = self._title
-            yield Input(placeholder="Type to search...", id="libsearch-input")
-            yield Label(self._status_text(), id="libsearch-status")
-            yield DataTable(id="libsearch-table")
+        with Horizontal(id="libsearch-outer"):
+            with Vertical(id="libsearch-container") as container:
+                container.border_title = self._title
+                yield Input(placeholder="Type to search...", id="libsearch-input")
+                yield Label(self._status_text(), id="libsearch-status")
+                yield DataTable(id="libsearch-table")
+            if self._has_preview:
+                with Vertical(id="libsearch-preview") as preview:
+                    preview.border_title = "Preview"
+                    yield Static("Select an item", id="preview-placeholder")
+                    yield Select([], id="unit-select", prompt="Unit")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -50,6 +119,46 @@ class LibrarySearchModal(ModalScreen[str | None]):
         table.zebra_stripes = True
         self._populate_table()
         self.query_one("#libsearch-input", Input).focus()
+
+        if self._has_preview:
+            self._render_theme = render_theme_from_textual(
+                self.app.available_themes.get(self.app.theme)
+            )
+            self._hide_unit_select()
+            self._build_path_lookups()
+
+    def _build_path_lookups(self) -> None:
+        """Build library-name -> file path mappings for preview."""
+        try:
+            from kist.kicad.discovery import detect_kicad
+            from kist.kicad.render import (
+                build_footprint_path_lookup,
+                build_symbol_path_lookup,
+            )
+
+            env = detect_kicad()
+            if env is None:
+                self._set_preview_placeholder("KiCad environment not found")
+                return
+
+            kist_root = getattr(self.app, "library_path", None)
+            config = getattr(self.app, "library_config", None)
+
+            if self._item_kind == "symbol":
+                self._sym_paths = build_symbol_path_lookup(env, kist_root, config)
+                if not self._sym_paths:
+                    self._set_preview_placeholder("No symbol libraries found")
+                else:
+                    self._preview_ready = True
+            else:
+                self._fp_paths = build_footprint_path_lookup(env, kist_root, config)
+                if not self._fp_paths:
+                    self._set_preview_placeholder("No footprint libraries found")
+                else:
+                    self._preview_ready = True
+        except Exception:
+            log.debug("Failed to build path lookups", exc_info=True)
+            self._set_preview_placeholder("Preview unavailable")
 
     def _status_text(self) -> str:
         total = len(self._items)
@@ -66,6 +175,11 @@ class LibrarySearchModal(ModalScreen[str | None]):
         for item in self._filtered[:_MAX_ROWS]:
             table.add_row(item.library, item.name, key=item.reference)
         self.query_one("#libsearch-status", Label).update(self._status_text())
+
+        if self._has_preview and table.row_count == 0:
+            self._set_preview_placeholder("No matching items")
+            self._hide_unit_select()
+            self._current_ref = None
 
     def _run_filter(self) -> None:
         query = self.query_one("#libsearch-input", Input).value.strip().lower()
@@ -89,6 +203,187 @@ class LibrarySearchModal(ModalScreen[str | None]):
             return
         ref = str(event.row_key.value)
         self.dismiss(ref)
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if (
+            event.data_table.id != "libsearch-table"
+            or not self._has_preview
+            or not self._preview_ready
+        ):
+            return
+        if event.row_key is None or event.row_key.value is None:
+            return
+
+        ref = str(event.row_key.value)
+        if ref == self._current_ref:
+            return
+
+        self._preview_seq += 1
+        self._current_ref = ref
+        self._set_preview_placeholder("Rendering preview...")
+        self._render_preview_worker(ref, self._preview_seq)
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id != "unit-select":
+            return
+        if event.value == Select.BLANK or self._current_ref is None:
+            return
+        if not isinstance(event.value, str):
+            return
+
+        try:
+            unit = int(event.value)
+        except (TypeError, ValueError):
+            return
+
+        if unit == self._current_unit:
+            return
+
+        self._current_unit = unit
+        self._preview_seq += 1
+        self._set_preview_placeholder("Rendering preview...")
+        self._render_preview_worker(self._current_ref, self._preview_seq)
+
+    @work(exclusive=True)
+    async def _render_preview_worker(self, ref: str, seq: int) -> None:
+        try:
+            payload = await asyncio.to_thread(
+                self._build_preview_payload, ref, self._current_unit
+            )
+        except Exception:
+            log.debug("Preview render failed for %s", ref, exc_info=True)
+            payload = {"error": "Preview unavailable"}
+        self._apply_preview_payload(seq, ref, payload)
+
+    def _build_preview_payload(self, ref: str, unit: int) -> dict[str, Any]:
+        from kist.kicad.render import get_symbol_units, load_footprint, render_footprint
+
+        try:
+            library, name = ref.split(":", 1)
+        except ValueError:
+            return {"error": "Invalid item reference"}
+
+        if self._item_kind == "symbol":
+            sym_path = self._sym_paths.get(library)
+            if sym_path is None or not sym_path.is_file():
+                return {"error": "Symbol library not found"}
+
+            stat = sym_path.stat()
+            lib = _load_symbol_library(sym_path, stat.st_mtime_ns)
+            sym = lib.get_symbol(name)
+            if sym is None:
+                return {"error": "Symbol not found"}
+
+            units = get_symbol_units(sym)
+            active_unit = unit if unit in units else units[0]
+
+            from kist.kicad.render import render_symbol
+
+            img = render_symbol(sym, unit=active_unit, theme=self._render_theme)
+            return {
+                "kind": "symbol",
+                "image": img,
+                "units": units,
+                "active_unit": active_unit,
+            }
+
+        fp_dir = self._fp_paths.get(library)
+        if fp_dir is None:
+            return {"error": "Footprint library not found"}
+
+        fp_path = fp_dir / f"{name}.kicad_mod"
+        if not fp_path.is_file():
+            return {"error": "Footprint file not found"}
+
+        tree = load_footprint(fp_path)
+        img = render_footprint(tree, theme=self._render_theme)
+        return {
+            "kind": "footprint",
+            "image": img,
+        }
+
+    def _apply_preview_payload(
+        self, seq: int, ref: str, payload: dict[str, Any]
+    ) -> None:
+        if seq != self._preview_seq or ref != self._current_ref:
+            return
+
+        error = payload.get("error")
+        if isinstance(error, str):
+            self._hide_unit_select()
+            self._set_preview_placeholder(error)
+            return
+
+        image = payload.get("image")
+        if image is None:
+            self._hide_unit_select()
+            self._set_preview_placeholder("Preview unavailable")
+            return
+
+        if payload.get("kind") == "symbol":
+            units = payload.get("units")
+            active = payload.get("active_unit")
+            if isinstance(units, list) and all(isinstance(u, int) for u in units):
+                self._current_units = units
+            else:
+                self._current_units = [1]
+
+            if isinstance(active, int):
+                self._current_unit = active
+
+            self._update_unit_select()
+        else:
+            self._hide_unit_select()
+
+        self._set_preview_image(image)
+
+    def _update_unit_select(self) -> None:
+        unit_select = self.query_one("#unit-select", Select)
+        if len(self._current_units) <= 1:
+            unit_select.display = False
+            return
+
+        options = [(f"Unit {u}", str(u)) for u in self._current_units]
+        unit_select.set_options(options)
+        unit_select.value = str(self._current_unit)
+        unit_select.display = True
+
+    def _hide_unit_select(self) -> None:
+        if not self._has_preview:
+            return
+        self.query_one("#unit-select", Select).display = False
+
+    def _set_preview_placeholder(self, text: str) -> None:
+        if not self._has_preview:
+            return
+
+        preview = self.query_one("#libsearch-preview", Vertical)
+        existing = self.query("#preview-image")
+        for widget in existing:
+            widget.remove()
+
+        try:
+            placeholder = self.query_one("#preview-placeholder", Static)
+        except NoMatches:
+            preview.mount(Static(text, id="preview-placeholder"))
+            return
+        placeholder.update(text)
+
+    def _set_preview_image(self, image: Any) -> None:
+        if not self._has_preview:
+            return
+
+        preview = self.query_one("#libsearch-preview", Vertical)
+
+        placeholder = self.query("#preview-placeholder")
+        for widget in placeholder:
+            widget.remove()
+
+        existing = self.query("#preview-image")
+        if existing:
+            existing[0].image = image  # type: ignore[attr-defined]
+        elif _ImageWidget is not None:
+            preview.mount(_ImageWidget(image, id="preview-image"))
 
     def action_cancel(self) -> None:
         self.dismiss(None)

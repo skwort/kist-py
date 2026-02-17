@@ -250,6 +250,15 @@ def run_tui(
     init_path: Path | None = None,
 ) -> None:
     """Entry point for launching the TUI from the CLI."""
+    # Probe terminal for image protocol support (Kitty/Sixel) before Textual
+    # takes over the TTY.  textual_image.widget runs get_cell_size() at import
+    # time, which sends escape sequences -- must happen before app.run().
+    try:
+        import textual_image.widget  # noqa: F401
+    except Exception:
+        # Preview support is optional; TUI should still launch cleanly.
+        pass
+
     app = KistApp(
         start_screen=start_screen,
         url_or_mpn=url_or_mpn,

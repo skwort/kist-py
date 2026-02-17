@@ -509,8 +509,11 @@ class PartForm(Static):
             )
             return
 
+        item_kind: Literal["symbol", "footprint"] = (
+            "symbol" if field == "symbol" else "footprint"
+        )
         app.push_screen(
-            LibrarySearchModal(items, title=title),
+            LibrarySearchModal(items, title=title, item_kind=item_kind),
             callback=lambda ref: self._on_library_search_result(ref, field),
         )
 
