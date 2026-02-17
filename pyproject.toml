@@ -15,24 +15,20 @@ dependencies = [
     # CLI
     "typer>=0.21.1",
     "rich>=14.3.2",
-
     # Data & validation
     "pydantic>=2.12.5",
-
     # HTTP (supplier APIs)
     "httpx>=0.28.1",
-
     # TUI
     "textual>=7.0.0",
-
     # Logging
     "structlog>=25.5.0",
-
     # Config paths
     "platformdirs>=4.5.1",
-
     # TOML (preserves comments and formatting on round-trip)
     "tomlkit>=0.14.0",
+    "pillow>=12.1.1",
+    "textual-image>=0.8.5",
 ]
 
 [project.optional-dependencies]
