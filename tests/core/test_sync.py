@@ -9,6 +9,7 @@ from kist.core.database import PartsDatabase, create_empty
 from kist.core.sync import SYM_LIB_TABLE, sync_sym_lib_table, sync_symbols
 from kist.kicad.mapping import library_filename
 from kist.kicad.symbols import SymbolLibrary
+from kist.kicad.templates import spec_property_key, stub_symbol
 from kist.models import (
     JellybeanPart,
     LibraryConfig,
@@ -235,6 +236,57 @@ def test_sync_preserves_visible_spec_properties(library):
     tol_prop = _find_prop(sym, "tolerance")
     assert tol_prop is not None
     assert _prop_is_hidden(tol_prop)
+
+
+def test_sync_passes_only_spec_visibility_to_symbol_builder(library, monkeypatch):
+    """Visibility carryover should include only this part's spec properties."""
+    root, db, config = library
+    part = _make_resistor("10kΩ", "1%", "0603")
+    db.add(part)
+    sync_symbols(root, db, config)  # create existing symbol
+
+    captured: dict[str, set[str] | None] = {}
+
+    def fake_visible(_sym):
+        return {"Reference", "resistance", "not_a_spec"}
+
+    def fake_symbol_for_part(part_arg, categories_arg, *, visible_specs=None):
+        captured["visible_specs"] = visible_specs
+        return stub_symbol(part_arg.name, {"Reference": "R", "Value": "X"})
+
+    monkeypatch.setattr("kist.core.sync.get_visible_properties", fake_visible)
+    monkeypatch.setattr("kist.core.sync.symbol_for_part", fake_symbol_for_part)
+
+    sync_symbols(root, db, config)
+
+    assert captured["visible_specs"] == {"resistance"}
+
+
+def test_sync_preserves_visible_colliding_spec_property(library):
+    """Visibility preservation also works for renamed colliding spec keys."""
+    root, db, config = library
+    part = _make_resistor("10kΩ", "1%", "0603").model_copy(
+        update={"specifications": {"Value": "from-spec", "tolerance": "1%"}}
+    )
+    db.add(part)
+    sync_symbols(root, db, config)
+
+    path = root / "symbols" / _res_filename()
+    lib = SymbolLibrary.load(path)
+    sym = lib.get_symbol(part.name)
+    value_spec_key = spec_property_key("Value")
+    value_spec_prop = _find_prop(sym, value_spec_key)
+    assert value_spec_prop is not None
+    _make_prop_visible(value_spec_prop)
+    lib.save(path)
+
+    sync_symbols(root, db, config)
+
+    lib = SymbolLibrary.load(path)
+    sym = lib.get_symbol(part.name)
+    value_spec_prop = _find_prop(sym, value_spec_key)
+    assert value_spec_prop is not None
+    assert not _prop_is_hidden(value_spec_prop)
 
 
 def _find_prop(sym, key):
