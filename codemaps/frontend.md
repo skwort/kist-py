@@ -1,17 +1,17 @@
 # Frontend (TUI)
 
-> Freshness: 2026-02-15
+> Freshness: 2026-02-23
 
 ## Overview
 
-Textual-based terminal UI. ~2,440 LOC across 17 files.
+Textual-based terminal UI. ~3,500 LOC Python + 620 LOC TCSS across 20 files.
 
-## App (`src/kist/tui/app.py`, 202 lines)
+## App (`src/kist/tui/app.py`, 267 lines)
 
 | Export | Line | Description |
 |---|---|---|
-| `KistApp` | :26 | Main Textual app; manages library lifecycle and part mutations |
-| `run_tui()` | :196 | Entry point for launching TUI from CLI |
+| `KistApp` | :28 | Main Textual app; manages library lifecycle and part mutations |
+| `run_tui()` | :247 | Entry point for launching TUI from CLI |
 
 **Reactive state:**
 - `library_path` (:36) -- current library root
@@ -23,7 +23,7 @@ Textual-based terminal UI. ~2,440 LOC across 17 files.
 - `save_part(part, replacing=None)` (:82) -- persist part + sync pipeline
 - `delete_part(ipn)` (:92) -- remove part + sync pipeline
 - `update_library_config(config)` (:100) -- save config to disk
-- `_after_mutation(db)` (:106) -- sync symbols, sym-lib-table, bump version
+- `_run_post_mutation_sync(db)` (:106) -- sync symbols, sym-lib-table, bump version
 - `get_system_commands()` (:127) -- command palette entries (Add, Settings, Sync, Check, Manage categories)
 
 ## Screen Hierarchy
@@ -39,6 +39,10 @@ KistApp
 │   ├── URL/MPN Input bar
 │   ├── PartForm (editable)
 │   └── Footer
+├── InitScreen
+│   ├── Path input, prefix/separator fields
+│   ├── Category manager (DataTable + CRUD)
+│   └── Create / Cancel buttons
 └── DetailModal
     └── PartForm (readonly, toggles to editable)
 ```
@@ -62,14 +66,14 @@ Main library overview with category sidebar and parts table.
 - `_apply_filters()` (:110) -- filters by category and search query
 - `_on_parts_changed()` (:179) -- reloads on parts_version change
 
-### detail.py (177 lines)
+### detail.py (179 lines)
 
 Modal for viewing/editing/deleting a part.
 
 | Export | Line | Description |
 |---|---|---|
 | `DetailModal` | :18 | Part detail view with edit toggle |
-| `ConfirmModal` | :155 | Generic yes/no confirmation dialog |
+| `ConfirmModal` | :157 | Generic yes/no confirmation dialog |
 
 **Bindings:** `escape` close, `e` toggle edit, `d` delete, `ctrl+s` save
 
@@ -93,11 +97,26 @@ Full-screen form for adding a new part from URL/MPN or manual entry.
 - `_fetch_worker()` (:87) -- fetch product data via providers module
 - `action_save()` (:109) -- validate, build Part, save, clear form
 
+### init.py (281 lines)
+
+Interactive library creation wizard with category management.
+
+| Export | Line | Description |
+|---|---|---|
+| `InitScreen` | :23 | Full-screen wizard for creating kist libraries |
+
+**Layout:** Path input, prefix/separator config, category DataTable with add/edit/delete
+
+**Key methods:**
+- `_reload_categories()` -- refresh category table from config
+- `_add_category()` / `_edit_category()` / `_delete_category()` -- CRUD via CategoryFormModal
+- `action_create()` -- validate inputs, call `init_library()`, switch to BrowseScreen
+
 ## Widgets (`src/kist/tui/widgets/`)
 
-### part_form.py (766 lines)
+### part_form.py (929 lines)
 
-Largest file. Single-page composite form for all part tiers.
+Largest widget. Single-page composite form for all part tiers.
 
 | Export | Line | Description |
 |---|---|---|
@@ -162,19 +181,38 @@ Bindings: `j`/`k` navigate, `e` select.
 |---|---|---|
 | `SettingsModal` | :24 | User preferences and library config |
 
-**Sections:** Appearance (theme), DigiKey API (client_id, client_secret), Library (prefix, separator, suppliers), Directories (symbols, footprints, 3dmodels).
+**Sections:** Appearance (theme), DigiKey API (client_id, client_secret), Library (prefix, separator, suppliers), Directories (symbols, footprints, 3dmodels, blocks).
 
 Theme changes apply live with revert on cancel.
 
-## Form Pipeline (`src/kist/tui/save.py`, 129 lines)
+### library_search.py (472 lines)
+
+fzf-style search modal for KiCad footprints and symbols with live preview.
+
+| Export | Line | Description |
+|---|---|---|
+| `LibrarySearchModal` | :60 | Search and preview modal |
+
+**Layout:** Search input + results DataTable (left) | symbol/footprint preview image (right)
+
+**Key methods:**
+- `_load_index()` -- async: detect KiCad, build/load cached index
+- `_run_filter()` -- debounced substring search across index
+- `_render_preview_worker()` -- async: render symbol/footprint to PIL Image
+- `action_clone()` -- clone selected item into local kist library
+
+Uses `kicad/discovery.py` for KiCad detection, `kicad/indexer.py` for indexing, `kicad/render.py` for preview images.
+
+## Form Pipeline (`src/kist/tui/save.py`, 130 lines)
 
 | Export | Line | Description |
 |---|---|---|
 | `ValidationNotice` | :17 | Exception for user-facing validation messages |
 | `build_part_from_form()` | :21 | Dict + categories --> Part (generates name/value/description) |
 
-## Themes (`src/kist/tui/themes.py`, 18 lines)
+## Themes (`src/kist/tui/themes.py`, 59 lines)
 
 | Export | Line | Description |
 |---|---|---|
-| `NULL_THEME` | :5 | Dark theme (primary: #333333, error: #cc5555, success: #53ae71) |
+| `NULL_THEME` | :8 | Custom dark theme (primary: #333333, error: #cc5555, success: #53ae71) |
+| `render_theme_from_textual()` | :38 | Convert Textual theme to RenderTheme for symbol/footprint rendering |

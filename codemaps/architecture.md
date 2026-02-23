@@ -1,6 +1,6 @@
 # Architecture
 
-> Freshness: 2026-02-15
+> Freshness: 2026-02-23
 
 ## Overview
 
@@ -23,8 +23,11 @@ src/kist/
 │   ├── naming.py        # value normalisation, name/value/description gen
 │   └── sync.py          # push part metadata to .kicad_sym + sym-lib-table
 ├── kicad/
+│   ├── discovery.py     # KiCad installation detection, variable resolution
+│   ├── indexer.py       # library indexing, clone operations, caching
 │   ├── lib_table.py     # sym-lib-table generation/merging
 │   ├── mapping.py       # category --> filename/symbol-reference mapping
+│   ├── render.py        # symbol/footprint rendering to PIL Images
 │   ├── symbols.py       # SymbolLibrary: .kicad_sym file abstraction
 │   └── templates.py     # symbol tree builders (resistor, capacitor, inductor, stub)
 ├── models/
@@ -37,24 +40,27 @@ src/kist/
 │   └── models.py        # ProviderProduct, ProviderMappingConfig
 └── tui/
     ├── app.py           # KistApp (Textual), mutation pipeline, command palette
-    ├── themes.py        # custom colour themes
+    ├── kist.tcss        # Textual CSS (623 lines)
+    ├── themes.py        # custom themes + Textual-to-render theme conversion
     ├── save.py          # form --> Part builder with validation
     ├── screens/
     │   ├── browse.py    # main screen: category sidebar + parts table + search
     │   ├── detail.py    # modal: view/edit/delete a part
-    │   └── add.py       # full screen: add part from URL/MPN or manual entry
+    │   ├── add.py       # full screen: add part from URL/MPN or manual entry
+    │   └── init.py      # full screen: library creation wizard
     ├── widgets/
     │   ├── category_list.py  # category sidebar (OptionList)
     │   ├── header.py         # header bar (title + library path)
-    │   ├── part_form.py      # single-page part editor (766 LOC, largest file)
+    │   ├── part_form.py      # single-page part editor (929 LOC, largest widget)
     │   └── parts_table.py    # DataTable for parts listing
     └── modals/
         ├── categories.py     # category create/edit + manager modals
         ├── check.py          # library validation results
+        ├── library_search.py # fzf-style search with live symbol/footprint preview
         └── settings.py       # theme, DigiKey creds, library config
 ```
 
-~6,100 LOC source, ~5,800 LOC tests (42 source files, 35 test files).
+~9,900 LOC source, ~7,700 LOC tests (46 source files, 35 test files).
 
 ## Data Flow
 
@@ -79,7 +85,13 @@ User
          │                            ▼                                 │
          │                      tomlkit (TOML I/O)                      │
          │                                                              │
-         └── tui/screens/add.py ──► providers/ ──► DigiKey v4 API       │
+         ├── tui/screens/add.py ──► providers/ ──► DigiKey v4 API       │
+         │                                                              │
+         └── tui/modals/library_search.py                               │
+                  │                                                     │
+                  ├── kicad/discovery.py ──► detect KiCad installation   │
+                  ├── kicad/indexer.py ──► build symbol/footprint index  │
+                  └── kicad/render.py ──► PIL preview images            │
                                                                         │
 cli/app.py ◄────────────────────────────────────────────────────────────┘
      │
@@ -98,6 +110,16 @@ save_part() / delete_part()
   --> parts_version++       # reactive: triggers BrowseScreen reload
 ```
 
+### Library Search Pipeline
+
+```
+LibrarySearchModal
+  --> kicad/discovery.detect_kicad()     # find KiCad installation
+  --> kicad/indexer.load_or_build_index() # cached symbol/footprint index
+  --> kicad/render.render_symbol()        # live preview on highlight
+  --> kicad/indexer.clone_symbol_to_local_library()  # on confirm
+```
+
 ## Key Decisions
 
 - **ADR-001**: Three-tier part model (proprietary / semi-jellybean / jellybean) as Pydantic discriminated union on `tier` field; canonical naming via key specs (ADR-001 §2,§7,§8)
@@ -109,6 +131,7 @@ save_part() / delete_part()
 - DigiKey v4 API via OAuth2 client_credentials grant
 - KiCad symbol templates dispatch on category + template field
 - User-defined categories stored in library config, merged with built-in defaults
+- Library index cached to disk with content-hash invalidation
 
 ## Dependencies
 
@@ -121,6 +144,7 @@ save_part() / delete_part()
 | platformdirs | OS-appropriate config dirs |
 | tomlkit | Round-trip TOML read/write |
 | textual | TUI framework (screens, widgets, reactive state) |
+| pillow | Symbol/footprint rendering for TUI previews |
 
 ## Entry Points
 

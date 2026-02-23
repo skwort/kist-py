@@ -1,8 +1,8 @@
 # Data Models
 
-> Freshness: 2026-02-15
+> Freshness: 2026-02-23
 
-## Part Models (`src/kist/models/part.py`, 92 lines)
+## Part Models (`src/kist/models/part.py`, 91 lines)
 
 ### Types
 
@@ -39,7 +39,7 @@ PartBase (abstract, extra="forbid")
     └── + alternates[], specifications (required)
 ```
 
-## Config Models (`src/kist/models/config.py`, 81 lines)
+## Config Models (`src/kist/models/config.py`, 80 lines)
 
 | Model | Line | Description |
 |---|---|---|
@@ -51,12 +51,32 @@ PartBase (abstract, extra="forbid")
 | `GlobalConfig` | :63 | User-level defaults (theme, suppliers, prefix, separator, providers) |
 | `ProjectRef` | :75 | Project --> library pointer (version, library_path, library_id) |
 
-## Provider Models (`src/kist/providers/models.py`, 57 lines)
+## Provider Models (`src/kist/providers/models.py`, 59 lines)
 
 | Model | Line | Description |
 |---|---|---|
 | `ProviderMappingConfig` | :8 | Mapping config (parameter_map, category_map, mounting_map, subcategory_map) |
 | `ProviderProduct` | :35 | Normalized product data (mpn, manufacturer, description, category, specs, etc.) |
+
+## KiCad Discovery Models (`src/kist/kicad/discovery.py`)
+
+| Model | Line | Description |
+|---|---|---|
+| `LibTableEntry` | :28 | Dataclass: name, type, uri, options, description from lib table row |
+| `KiCadEnvironment` | :37 | Dataclass: kicad_dir, user_dir, variables dict, sym/fp lib table paths |
+
+## KiCad Indexer Models (`src/kist/kicad/indexer.py`)
+
+| Model | Line | Description |
+|---|---|---|
+| `LibraryItem` | :44 | Dataclass: name, library, kind (symbol/footprint) |
+| `LibraryIndex` | :58 | Dataclass: symbols list, footprints list |
+
+## Render Models (`src/kist/kicad/render.py`)
+
+| Model | Line | Description |
+|---|---|---|
+| `RenderTheme` | :31 | Dataclass: background, foreground, wire, fill, pin, body colours |
 
 ## On-Disk Formats
 

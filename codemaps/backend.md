@@ -1,10 +1,10 @@
 # Backend
 
-> Freshness: 2026-02-15
+> Freshness: 2026-02-23
 
 ## CLI Module (`src/kist/cli/`)
 
-### app.py (204 lines)
+### app.py (214 lines)
 
 Typer application with callback + subcommands.
 
@@ -13,17 +13,17 @@ Typer application with callback + subcommands.
 | `app` | :9 | Typer instance, `invoke_without_command=True` |
 | `main()` | :18 | Callback: `--version` flag, launches TUI if no subcommand |
 | `init()` | :35 | Create library: delegates to `core.library.init_library` |
-| `link()` | :71 | Link project to library: delegates to `core.library.link_library` |
-| `add()` | :90 | Add a part to the library |
-| `search()` | :100 | Search for parts, display as Rich table |
-| `check()` | :138 | Validate part names, check for duplicate identities |
-| `sync()` | :178 | Sync KiCad symbol files and lib tables with parts database |
+| `link()` | :82 | Link project to library: delegates to `core.library.link_library` |
+| `add()` | :101 | Add a part to the library |
+| `search()` | :111 | Search for parts, display as Rich table |
+| `check()` | :149 | Validate part names, check for duplicate identities |
+| `sync()` | :189 | Sync KiCad symbol files and lib tables with parts database |
 
 Imports are deferred inside command bodies to keep CLI startup fast.
 
 ## Core Module (`src/kist/core/`)
 
-### config.py (170 lines)
+### config.py (169 lines)
 
 Configuration I/O using tomlkit for round-trip TOML.
 
@@ -43,7 +43,7 @@ Configuration I/O using tomlkit for round-trip TOML.
 
 Config dir: `KIST_CONFIG_DIR` env var, or `platformdirs.user_config_dir("kist")`.
 
-### database.py (148 lines)
+### database.py (147 lines)
 
 JSON-backed parts database with CRUD operations.
 
@@ -62,7 +62,7 @@ JSON-backed parts database with CRUD operations.
 
 Uses `pydantic.TypeAdapter` for the `Part` discriminated union (type alias, not BaseModel).
 
-### library.py (193 lines)
+### library.py (198 lines)
 
 Library lifecycle: create, link, discover.
 
@@ -70,13 +70,13 @@ Library lifecycle: create, link, discover.
 |---|---|---|
 | `DiscoveryResult` | :27 | NamedTuple(library_root, project_dir=None) |
 | `init_library()` | :34 | Create `.kist/`, `config.toml`, `parts.json`, asset dirs |
-| `link_library()` | :81 | Create `kist.toml` + `lib/` symlink/junction |
-| `find_library()` | :134 | Walk-up discovery from start dir to filesystem root |
+| `link_library()` | :87 | Create `kist.toml` + `lib/` symlink/junction |
+| `find_library()` | :140 | Walk-up discovery from start dir to filesystem root |
 
 `_create_lib_link()` (:109) handles symlink (Unix) vs junction (Windows).
 `_find_project_for_library()` (:174) checks parent for kist.toml pointing back to library root.
 
-### naming.py (608 lines)
+### naming.py (665 lines)
 
 Engineering value normalisation, canonical name generation, and part identity.
 
@@ -99,10 +99,10 @@ Engineering value normalisation, canonical name generation, and part identity.
 
 | Function | Line | Description |
 |---|---|---|
-| `generate_name()` | :430 | Canonical part name from structured fields (ADR-001 §2) |
-| `generate_value()` | :490 | Schematic display value (ADR-001 §8) |
-| `generate_description()` | :537 | Human-readable description |
-| `get_identity()` | :578 | Deduplication tuple (ADR-001 §7) |
+| `generate_name()` | :488 | Canonical part name from structured fields (ADR-001 §2) |
+| `generate_value()` | :548 | Schematic display value (ADR-001 §8) |
+| `generate_description()` | :595 | Human-readable description |
+| `get_identity()` | :636 | Deduplication tuple (ADR-001 §7) |
 
 **Key data structures**:
 
@@ -112,9 +112,9 @@ Engineering value normalisation, canonical name generation, and part identity.
 | `_SI_PREFIXES` | :19 | SI prefix letter --> multiplier |
 | `_PACKAGE_ALIASES` | :53 | Common package name aliases |
 
-Internal: `_parse_engineering()` (:99) parses any engineering value string. `_format_eng_rlc()` (:144) formats float back to shorthand. `_get_key_specs()` looks up key spec fields per category/subcategory.
+Internal: `_parse_engineering()` (:99) parses any engineering value string. `_format_eng_rlc()` (:144) formats float back to shorthand.
 
-### categories.py (135 lines)
+### categories.py (134 lines)
 
 Built-in category definitions.
 
@@ -122,7 +122,7 @@ Built-in category definitions.
 |---|---|---|
 | `WELL_KNOWN_CATEGORIES` | :7 | Dict of CategoryDef for all 16 built-in categories (RES..MISC) |
 
-### check.py (61 lines)
+### check.py (60 lines)
 
 Library validation.
 
@@ -133,7 +133,7 @@ Library validation.
 
 Issue kinds: `name_drift` (generated name != stored name), `duplicate_identity`.
 
-### sync.py (95 lines)
+### sync.py (106 lines)
 
 Push part metadata to KiCad files.
 
@@ -141,11 +141,11 @@ Push part metadata to KiCad files.
 |---|---|---|
 | `SYM_LIB_TABLE` | :15 | `"sym-lib-table"` filename |
 | `sync_symbols()` | :18 | Write .kicad_sym per category from PartsDatabase |
-| `sync_sym_lib_table()` | :63 | Write/update sym-lib-table in project dir |
+| `sync_sym_lib_table()` | :75 | Write/update sym-lib-table in project dir |
 
 ## KiCad Module (`src/kist/kicad/`)
 
-### sexpr.py (486 lines, at `src/kist/sexpr.py`)
+### sexpr.py (485 lines, at `src/kist/sexpr.py`)
 
 Standalone S-expression parser/serializer for KiCad v8 file format.
 
@@ -163,7 +163,7 @@ Standalone S-expression parser/serializer for KiCad v8 file format.
 | `remove_children()` | :303 | Remove all children with tag |
 | `dumps()` | :478 | Format S-expr tree using KiCad v8 conventions |
 
-### symbols.py (154 lines)
+### symbols.py (180 lines)
 
 In-memory .kicad_sym file abstraction.
 
@@ -178,8 +178,9 @@ In-memory .kicad_sym file abstraction.
 | `.set_symbol()` | :79 | Add/replace symbol |
 | `.remove_symbol()` | :93 | Remove symbol by name |
 | `.update_properties()` | :109 | Patch property values on symbol |
+| `get_visible_properties()` | :168 | Find non-hidden properties on symbol |
 
-### templates.py (469 lines)
+### templates.py (527 lines)
 
 Symbol tree builders dispatched by category/template.
 
@@ -191,9 +192,10 @@ Symbol tree builders dispatched by category/template.
 | `capacitor_symbol()` | :265 | Unpolarized capacitor symbol |
 | `inductor_symbol()` | :357 | Arc coil inductor symbol |
 | `stub_symbol()` | :419 | Minimal symbol (properties only, no graphics) |
-| `symbol_for_part()` | :451 | Dispatch: pick template by part category/template field |
+| `spec_property_key()` | :462 | Generate property key from spec name |
+| `symbol_for_part()` | :486 | Dispatch: pick template by part category/template field |
 
-### mapping.py (31 lines)
+### mapping.py (30 lines)
 
 Category-to-filename conventions.
 
@@ -202,7 +204,7 @@ Category-to-filename conventions.
 | `library_filename()` | :12 | Category --> `.kicad_sym` filename (e.g. `"00k-Resistors.kicad_sym"`) |
 | `symbol_reference()` | :21 | Full KiCad symbol reference (e.g. `"00k-Resistors:RES-10K-1PCT-0603"`) |
 
-### lib_table.py (117 lines)
+### lib_table.py (116 lines)
 
 sym-lib-table generation and merging.
 
@@ -211,9 +213,55 @@ sym-lib-table generation and merging.
 | `generate_sym_lib_table()` | :50 | Generate full sym-lib-table for kist libraries |
 | `update_sym_lib_table()` | :82 | Merge kist entries into existing file, preserving non-kist entries |
 
+### discovery.py (253 lines)
+
+KiCad installation detection and variable resolution.
+
+| Export | Line | Description |
+|---|---|---|
+| `LibTableEntry` | :28 | Dataclass: S-expression row from KiCad lib table |
+| `KiCadEnvironment` | :37 | Dataclass: detected KiCad paths and variables |
+| `detect_kicad()` | :160 | Detect KiCad installation, resolve paths |
+| `resolve_uri()` | :192 | Resolve `${VAR}` references in URIs |
+| `parse_lib_table()` | :218 | Parse fp-lib-table or sym-lib-table |
+
+Internal: `_probe_versioned_dirs()`, `_nix_kicad_variables()`, `_build_variables()` handle Nix and standard KiCad installs.
+
+### indexer.py (477 lines)
+
+Build searchable index of KiCad footprints and symbols with clone support.
+
+| Export | Line | Description |
+|---|---|---|
+| `LibraryItem` | :44 | Dataclass: single footprint or symbol from a library |
+| `LibraryIndex` | :58 | Dataclass: combined index of footprints and symbols |
+| `build_footprint_index()` | :68 | Index KiCad footprint libraries |
+| `build_symbol_index()` | :116 | Index KiCad symbol libraries |
+| `linked_footprint_for_symbol()` | :241 | Resolve symbol-to-footprint linkage |
+| `clone_symbol_to_local_library()` | :274 | Clone symbol into local kist library |
+| `clone_footprint_to_local_library()` | :331 | Clone footprint into local kist library |
+| `load_or_build_index()` | :450 | Load from disk cache or build fresh (content-hash invalidation) |
+
+### render.py (1,234 lines)
+
+Render KiCad symbols and footprints to PIL Images for TUI previews.
+
+| Export | Line | Description |
+|---|---|---|
+| `RenderTheme` | :31 | Dataclass: semantic colours for rendering |
+| `DEFAULT_RENDER_THEME` | :45 | Default theme instance |
+| `build_symbol_path_lookup()` | :51 | Map library names to .kicad_sym paths |
+| `build_footprint_path_lookup()` | :74 | Map library names to .pretty dirs |
+| `get_symbol_units()` | :462 | Extract unit numbers from multi-unit symbol |
+| `render_symbol()` | :785 | Render symbol to PIL Image |
+| `load_footprint()` | :988 | Load and cache .kicad_mod files |
+| `render_footprint()` | :994 | Render footprint to PIL Image |
+
+Handles arcs, beziers, polylines, fills, pins, text (with KiCad markup), pads, and layers. Uses PIL for rasterisation with configurable theme colours.
+
 ## Providers Module (`src/kist/providers/`)
 
-### __init__.py (89 lines)
+### __init__.py (88 lines)
 
 Provider detection and dispatch.
 
@@ -222,14 +270,14 @@ Provider detection and dispatch.
 | `detect_provider()` | :23 | Return (provider_name, identifier) from URL or MPN |
 | `fetch_product()` | :51 | Detect provider, load creds/mapping, fetch product |
 
-### models.py (57 lines)
+### models.py (59 lines)
 
 | Export | Line | Description |
 |---|---|---|
 | `ProviderMappingConfig` | :8 | Mapping configuration for provider |
 | `ProviderProduct` | :35 | Normalized product data from supplier API |
 
-### digikey.py (389 lines)
+### digikey.py (397 lines)
 
 DigiKey v4 API client.
 
@@ -238,12 +286,12 @@ DigiKey v4 API client.
 | `PARAMETER_MAP` | :32 | Raw DigiKey param names --> normalized targets |
 | `CATEGORY_MAP` | :94 | DigiKey category names --> kist category codes |
 | `MOUNTING_MAP` | :167 | Raw mounting strings --> canonical values |
-| `default_mapping()` | :176 | Built-in DigiKey mapping defaults |
-| `parse_digikey_url()` | :189 | Extract MPN from DigiKey URL |
-| `DigiKeyClient` | :307 | v4 API client (OAuth2 client_credentials) |
+| `default_mapping()` | :182 | Built-in DigiKey mapping defaults |
+| `parse_digikey_url()` | :195 | Extract MPN from DigiKey URL |
+| `DigiKeyClient` | :316 | v4 API client (OAuth2 client_credentials) |
 | `.fetch_product()` | :357 | Fetch product details from DigiKey API |
 
-## Error Hierarchy (`src/kist/errors.py`, 38 lines)
+## Error Hierarchy (`src/kist/errors.py`, 37 lines)
 
 ```
 KistError
