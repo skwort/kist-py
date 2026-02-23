@@ -61,6 +61,9 @@ class LibrarySearchModal(ModalScreen[str | None]):
     Presents an input at the top with filtered results below.
     Substring matching on the full ``Library:Name`` reference.
     Dismisses with the selected reference string, or ``None`` on cancel.
+
+    Pass *items* to populate immediately, or omit to load the index
+    asynchronously (the modal opens instantly and shows a loading state).
     """
 
     BINDINGS = [
@@ -69,14 +72,15 @@ class LibrarySearchModal(ModalScreen[str | None]):
 
     def __init__(
         self,
-        items: list[LibraryItem],
+        items: list[LibraryItem] | None = None,
         title: str = "Footprints",
         item_kind: Literal["symbol", "footprint"] | None = None,
     ) -> None:
         super().__init__()
-        self._items = items
+        self._items: list[LibraryItem] = items or []
         self._title = title
-        self._filtered: list[LibraryItem] = list(items)
+        self._filtered: list[LibraryItem] = list(self._items)
+        self._loading = items is None
         self._debounce_timer: Timer | None = None
 
         if item_kind is not None:
@@ -117,15 +121,75 @@ class LibrarySearchModal(ModalScreen[str | None]):
         table.add_columns("Library", "Name")
         table.cursor_type = "row"
         table.zebra_stripes = True
-        self._populate_table()
         self.query_one("#libsearch-input", Input).focus()
 
+        if self._loading:
+            self.query_one("#libsearch-status", Label).update(self._status_text())
+            self._load_index()
+        else:
+            self._populate_table()
+            self._init_preview()
+
+    def _init_preview(self) -> None:
         if self._has_preview:
             self._render_theme = render_theme_from_textual(
                 self.app.available_themes.get(self.app.theme)
             )
             self._hide_unit_select()
             self._build_path_lookups()
+
+    @work(exclusive=True)
+    async def _load_index(self) -> None:
+        index = await asyncio.to_thread(self._fetch_index)
+        if index is None:
+            self.notify(
+                "KiCad not found -- cannot browse libraries", severity="warning"
+            )
+            self.dismiss(None)
+            return
+
+        # Update app-level cache so subsequent opens are instant.
+        if hasattr(self.app, "_library_index"):
+            self.app._library_index = index  # type: ignore[attr-defined]
+
+        items = index.symbols if self._item_kind == "symbol" else index.footprints
+        if not items:
+            self.notify(
+                f"No {self._title.lower()} found in library index",
+                severity="warning",
+            )
+            self.dismiss(None)
+            return
+
+        self._items = items
+        self._filtered = list(items)
+        self._loading = False
+        self._populate_table()
+        self._init_preview()
+
+    def _fetch_index(self):
+        """Build the library index (runs in worker thread)."""
+        from kist.kicad.discovery import detect_kicad
+        from kist.kicad.indexer import load_or_build_index
+
+        # Use app cache if available.
+        cached = getattr(self.app, "_library_index", None)
+        if cached is not None:
+            return cached
+
+        env = detect_kicad()
+        if env is None:
+            return None
+
+        try:
+            return load_or_build_index(
+                env,
+                kist_root=getattr(self.app, "library_path", None),
+                config=getattr(self.app, "library_config", None),
+            )
+        except Exception:
+            log.warning("Failed to build library index", exc_info=True)
+            return None
 
     def _build_path_lookups(self) -> None:
         """Build library-name -> file path mappings for preview."""
@@ -161,6 +225,8 @@ class LibrarySearchModal(ModalScreen[str | None]):
             self._set_preview_placeholder("Preview unavailable")
 
     def _status_text(self) -> str:
+        if self._loading:
+            return f"Loading {self._title.lower()}..."
         total = len(self._items)
         matched = len(self._filtered)
         label = self._title.lower()
