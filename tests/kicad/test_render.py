@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from kist.kicad import render as render_mod
@@ -139,6 +140,9 @@ def test_load_footprint_cache_invalidation(tmp_path: Path):
         '  (pad "1" smd rect (at 0 0) (size 2 2) (layers "F.Cu"))\n'
         ")\n"
     )
+    # Bump mtime so the cache key changes even on fast filesystems.
+    stat = fp_path.stat()
+    os.utime(fp_path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
 
     tree2 = load_footprint(fp_path)
     assert tree1 != tree2
