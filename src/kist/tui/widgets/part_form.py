@@ -122,15 +122,14 @@ class PartForm(Static):
 
     def _compose_general(self) -> ComposeResult:
         with Vertical(classes="section", id="section-general"):
-            # Name (always read-only -- auto-generated from other fields)
+            # Name (auto-generated but manually overridable)
             with Horizontal(classes="form-field"):
                 yield Label("Name", classes="field-label")
                 yield Label("", id="part-name-ro", classes="field-value-ro")
                 yield Input(
                     id="part-name",
                     classes="field-value",
-                    placeholder="Auto-generated",
-                    disabled=True,
+                    placeholder="Auto-generated from fields",
                 )
             with Horizontal(classes="form-field"):
                 yield Label("Tier", classes="field-label")
@@ -766,6 +765,8 @@ class PartForm(Static):
     def to_dict(self) -> dict:
         """Extract current form values as a flat dict."""
         result: dict = {}
+
+        result["name"] = self.query_one("#part-name", Input).value.strip()
 
         # Identity
         tier_val = self.query_one("#tier", Select).value
