@@ -150,7 +150,7 @@ async def test_category_without_subcategories_clears_options(editable_app):
 async def test_load_part_to_dict_roundtrip(editable_app):
     part = ProprietaryPart(
         tier=Tier.PROPRIETARY,
-        name="IC-STM32F405RGT6-LQFP64",
+        name="IC-STM32F405RGT6",
         description="ARM Cortex-M4 MCU",
         category="IC",
         mpn="STM32F405RGT6",

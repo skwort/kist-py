@@ -20,7 +20,7 @@ from kist.models import (
 @pytest.fixture
 def proprietary_part() -> ProprietaryPart:
     return ProprietaryPart(
-        name="IC-STM32F405RGT6-LQFP64",
+        name="IC-STM32F405RGT6",
         tier=Tier.PROPRIETARY,
         description="ARM Cortex-M4 MCU, 1MB Flash, 168MHz",
         category="IC",
@@ -40,7 +40,7 @@ def proprietary_part() -> ProprietaryPart:
 @pytest.fixture
 def semi_jellybean_part() -> SemiJellybeanPart:
     return SemiJellybeanPart(
-        name="IC-TL072-SO8",
+        name="IC-TL072",
         tier=Tier.SEMI_JELLYBEAN,
         description="Dual JFET-input operational amplifier",
         category="IC",

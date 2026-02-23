@@ -21,7 +21,7 @@ pytestmark = pytest.mark.slow
 
 def _make_proprietary_part() -> ProprietaryPart:
     return ProprietaryPart(
-        name="IC-STM32F405RGT6-LQFP64",
+        name="IC-STM32F405RGT6",
         tier=Tier.PROPRIETARY,
         description="ARM Cortex-M4 MCU",
         category="IC",
@@ -100,7 +100,7 @@ async def test_detail_modal_border_title():
         await pilot.pause()
 
         container = app.screen.query_one("#detail-container")
-        assert container.border_title == "IC-STM32F405RGT6-LQFP64"
+        assert container.border_title == "IC-STM32F405RGT6"
 
 
 async def test_escape_dismisses_modal():

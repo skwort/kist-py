@@ -55,7 +55,7 @@ def test_search_by_description(library):
 def test_search_by_mpn(library):
     result = runner.invoke(app, ["search", "STM32F405"])
     assert result.exit_code == 0
-    assert "IC-STM32F405RGT6-LQFP64" in result.output
+    assert "IC-STM32F405RGT6" in result.output
 
 
 def test_search_library_not_found(tmp_path, monkeypatch):

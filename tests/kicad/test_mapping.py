@@ -27,5 +27,5 @@ def test_symbol_reference_format():
 
 
 def test_symbol_reference_with_ic():
-    ref = symbol_reference("ICs", "IC-STM32F405RGT6-LQFP64")
-    assert ref == "00k-ICs:IC-STM32F405RGT6-LQFP64"
+    ref = symbol_reference("ICs", "IC-STM32F405RGT6")
+    assert ref == "00k-ICs:IC-STM32F405RGT6"

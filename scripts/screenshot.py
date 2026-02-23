@@ -10,7 +10,7 @@ Options:
     --screen SCREEN   Screen to capture: browse, detail, add (default: browse)
     --size WxH        Terminal size (default: 120x36)
     --output PATH     Output path (default: site/assets/<screen>-screenshot.svg)
-    --part NAME       Part to open in detail view (default: IC-STM32F405RGT6-LQFP64)
+    --part NAME       Part to open in detail view (default: IC-STM32F405RGT6)
 """
 
 from __future__ import annotations
@@ -176,14 +176,14 @@ DEMO_PARTS = [
         suppliers={},
     ),
     _sj(
-        name="IC-TL072-SO8",
+        name="IC-TL072",
         description="Dual JFET op-amp, low noise, SO-8",
         category="IC",
         package="SO-8",
         mounting="smd",
         value="TL072",
         reference="U",
-        symbol="05k-ICs:IC-TL072-SO8",
+        symbol="05k-ICs:IC-TL072",
         footprint="SOIC-8",
         tags=["opamp", "dual", "audio"],
         mpn="TL072CDR",
@@ -193,14 +193,14 @@ DEMO_PARTS = [
         suppliers={"digikey": SupplierInfo(sku="296-1775-1-ND")},
     ),
     _pr(
-        name="IC-STM32F405RGT6-LQFP64",
+        name="IC-STM32F405RGT6",
         description="ARM Cortex-M4 MCU, 168MHz, 1MB flash",
         category="IC",
         package="LQFP-64",
         mounting="smd",
         value="STM32F405RGT6",
         reference="U",
-        symbol="05k-ICs:IC-STM32F405RGT6-LQFP64",
+        symbol="05k-ICs:IC-STM32F405RGT6",
         footprint="LQFP-64",
         tags=["mcu", "arm", "stm32"],
         mpn="STM32F405RGT6",
@@ -212,14 +212,14 @@ DEMO_PARTS = [
         },
     ),
     _pr(
-        name="IC-WM8960CGEFL-QFN32",
+        name="IC-WM8960CGEFL",
         description="Stereo audio codec, I2C, 24-bit",
         category="IC",
         package="QFN-32",
         mounting="smd",
         value="WM8960",
         reference="U",
-        symbol="05k-ICs:IC-WM8960CGEFL-QFN32",
+        symbol="05k-ICs:IC-WM8960CGEFL",
         footprint="QFN-32",
         tags=["audio", "codec"],
         mpn="WM8960CGEFL/RV",
@@ -242,14 +242,14 @@ DEMO_PARTS = [
         suppliers={"digikey": SupplierInfo(sku="1965-N8-ND")},
     ),
     _sj(
-        name="DIO-1N4148W-SOD123",
+        name="DIO-1N4148W",
         description="Fast switching diode, 100V 150mA",
         category="DIO",
         package="SOD-123",
         mounting="smd",
         value="1N4148W",
         reference="D",
-        symbol="03k-Diodes:DIO-1N4148W-SOD123",
+        symbol="03k-Diodes:DIO-1N4148W",
         footprint="D_SOD-123",
         tags=["diode", "switching"],
         mpn="1N4148W-7-F",
@@ -448,8 +448,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--part",
-        default="IC-STM32F405RGT6-LQFP64",
-        help="Part to open in detail view (default: IC-STM32F405RGT6-LQFP64)",
+        default="IC-STM32F405RGT6",
+        help="Part to open in detail view (default: IC-STM32F405RGT6)",
     )
     args = parser.parse_args()
 

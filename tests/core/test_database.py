@@ -141,8 +141,8 @@ def test_list_parts_sorted(
     jellybean_part: JellybeanPart,
 ):
     db.add(jellybean_part)  # RES-10K-1PCT-0603
-    db.add(proprietary_part)  # IC-STM32F405RGT6-LQFP64
-    db.add(semi_jellybean_part)  # IC-TL072-SO8
+    db.add(proprietary_part)  # IC-STM32F405RGT6
+    db.add(semi_jellybean_part)  # IC-TL072
 
     names = [p.name for p in db.list_parts()]
     assert names == sorted(names)
@@ -161,7 +161,7 @@ def test_search_by_name(
 
     results = db.search("STM32")
     assert len(results) == 1
-    assert results[0].name == "IC-STM32F405RGT6-LQFP64"
+    assert results[0].name == "IC-STM32F405RGT6"
 
 
 def test_search_by_description(
@@ -187,7 +187,7 @@ def test_search_by_tag(
 
     results = db.search("cortex")
     assert len(results) == 1
-    assert results[0].name == "IC-STM32F405RGT6-LQFP64"
+    assert results[0].name == "IC-STM32F405RGT6"
 
 
 def test_search_by_mpn(db: PartsDatabase, semi_jellybean_part: SemiJellybeanPart):

@@ -345,9 +345,9 @@ def _jellybean(
     "part, expected",
     [
         # Proprietary
-        (_proprietary_stm32(), "IC-STM32F405RGT6-LQFP64"),
+        (_proprietary_stm32(), "IC-STM32F405RGT6"),
         # Semi-jellybean
-        (_semi_tl072(), "IC-TL072-SO8"),
+        (_semi_tl072(), "IC-TL072"),
         # Jellybean -- passives
         (
             _jellybean(

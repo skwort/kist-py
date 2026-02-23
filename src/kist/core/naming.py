@@ -494,12 +494,14 @@ def generate_name(
     Generate the canonical part name from structured fields.
 
     Dispatches by tier:
-    - Proprietary: ``CATEGORY-MPN-PACKAGE``
-    - Semi-jellybean: ``CATEGORY-BASE_PN-PACKAGE``
+    - Proprietary: ``CATEGORY-MPN``
+    - Semi-jellybean: ``CATEGORY-BASE_PN``
     - Jellybean: ``CATEGORY[-SUBCATEGORY]-SPECS-PACKAGE``
 
-    Package is always last (before footprint variant). Appends
-    ``-VARIANT`` if ``footprint_variant`` is set.
+    Package is included for jellybean parts only (passives etc.),
+    not for proprietary/semi-jellybean (ICs etc.) where the MPN or
+    base PN is already unique. Appends ``-VARIANT`` if
+    ``footprint_variant`` is set.
     """
     pkg = normalise_package(part.package) if part.package else ""
 
@@ -510,7 +512,7 @@ def generate_name(
         segments = [part.category, part.base_pn]
 
     else:
-        # Jellybean
+        # Jellybean -- package is part of the name (e.g. RES-10K-1PCT-0603).
         segments: list[str] = [part.category]
         if part.subcategory:
             segments.append(part.subcategory.upper())
@@ -522,8 +524,8 @@ def generate_name(
                 if raw:
                     segments.append(_normalise_spec(field, raw))
 
-    if pkg:
-        segments.append(pkg)
+        if pkg:
+            segments.append(pkg)
 
     if part.footprint_variant:
         segments.append(part.footprint_variant.upper())
