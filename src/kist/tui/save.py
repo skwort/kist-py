@@ -74,8 +74,9 @@ def build_part_from_form(
 
     part = _build_part(tier, d, common)
 
-    # Generate name, value, description
-    part.name = generate_name(part, categories, separator)
+    # Use manual name if provided, otherwise auto-generate
+    manual_name = d.get("name", "").strip()
+    part.name = manual_name or generate_name(part, categories, separator)
     part.value = generate_value(part, categories)
     if isinstance(part, JellybeanPart):
         part.description = generate_description(part, categories)
