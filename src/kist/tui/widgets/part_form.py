@@ -809,6 +809,10 @@ class PartForm(Static):
         # Specs -- package/mounting already excluded by provider layer
         for key, value in product.parameters.items():
             self._add_spec_to_table(key, value)
+        if product.rohs_status:
+            self._add_spec_to_table("rohs_status", product.rohs_status)
+        if product.reach_status:
+            self._add_spec_to_table("reach_status", product.reach_status)
 
         # Supplier
         sup_url = product.supplier_url or ""

@@ -54,3 +54,6 @@ class ProviderProduct(BaseModel):
     quantity_available: int | None = None
     package: str | None = None
     mounting: str | None = None
+    # Environmental classifications
+    rohs_status: str | None = None
+    reach_status: str | None = None

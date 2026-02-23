@@ -82,6 +82,12 @@ PARAMETER_MAP: dict[str, str] = {
     "Topology": "topology",
     "Protocol": "protocol",
     "Output Configuration": "output_config",
+    # -- General IC -------------------------------------------------------------
+    "Data Interface": "data_interface",
+    "Voltage - Supply, Analog": "voltage_supply_analog",
+    "Voltage - Supply, Digital": "voltage_supply_digital",
+    # -- Thermal / environmental ------------------------------------------------
+    "Operating Temperature": "operating_temperature",
     # -- Misc -------------------------------------------------------------------
     "Color": "colour",
 }
@@ -237,6 +243,7 @@ def _map_product(
 
     description_obj = product.get("Description", {})
     manufacturer_obj = product.get("Manufacturer", {})
+    classifications = product.get("Classifications", {})
 
     # Pipeline: normalise parameter names, then route.
     #   "package"      --> product.package
@@ -298,6 +305,8 @@ def _map_product(
         quantity_available=product.get("QuantityAvailable"),
         package=package,
         mounting=mounting,
+        rohs_status=classifications.get("RohsStatus"),
+        reach_status=classifications.get("ReachStatus"),
     )
 
 

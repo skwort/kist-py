@@ -64,6 +64,10 @@ SAMPLE_RESPONSE = {
         "DatasheetUrl": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L_12.pdf",
         "UnitPrice": 0.10,
         "QuantityAvailable": 28890000,
+        "Classifications": {
+            "RohsStatus": "ROHS3 Compliant",
+            "ReachStatus": "REACH Unaffected",
+        },
         "Category": {
             "Name": "Resistors",
             "ChildCategories": [
@@ -280,6 +284,28 @@ def test_map_unknown_mounting_returns_none():
     )
     result = _map_product(SAMPLE_RESPONSE, "726835", custom)
     assert result.mounting is None
+
+
+def test_map_rohs_and_reach():
+    result = _map_product(SAMPLE_RESPONSE, "726835", _DEFAULT)
+    assert result.rohs_status == "ROHS3 Compliant"
+    assert result.reach_status == "REACH Unaffected"
+
+
+def test_map_missing_rohs_returns_none():
+    data = {
+        "Product": {
+            "ManufacturerProductNumber": "TEST-123",
+            "Manufacturer": {"Name": "TestCorp"},
+            "Description": {
+                "ProductDescription": "Test part",
+                "DetailedDescription": "A test part",
+            },
+        }
+    }
+    result = _map_product(data, "TEST-123", _DEFAULT)
+    assert result.rohs_status is None
+    assert result.reach_status is None
 
 
 def test_map_protocol_relative_datasheet():
