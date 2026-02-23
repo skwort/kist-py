@@ -4,7 +4,8 @@
 
 kist manages your KiCad parts library from the terminal. It enforces consistent naming, pulls metadata from supplier APIs, generates KiCad symbols, and keeps everything in version-controllable files -- no servers, no databases, just your library and git.
 
-<!-- TODO: screenshot here -->
+
+> **Note:** kist is under active development. Expect breaking changes until a stable release.
 
 ## Why kist?
 
@@ -53,7 +54,7 @@ uv sync
 kist init ~/my-kicad-lib
 ```
 
-This creates a `.kist/` directory with `config.toml`, `parts.json`, and asset directories for symbols, footprints, and 3D models.
+This creates a `.kist/` directory with `config.toml`, `parts.json`, and asset directories for symbols, footprints, 3D models, and blocks.
 
 ### Link a KiCad project
 
@@ -101,7 +102,8 @@ my-library/
 │   ├── parts.json       # Part database (source of truth)
 │   ├── symbols/         # Generated .kicad_sym files (one per category)
 │   ├── footprints/
-│   └── 3dmodels/
+│   ├── 3dmodels/
+│   └── blocks/
 └── sym-lib-table        # KiCad library table (auto-managed)
 ```
 
@@ -137,7 +139,7 @@ ty check            # type check
 
 ### Architecture
 
-See [codemap.md](codemap.md) for a full module-level map of the codebase, and `docs/adr/` for architectural decision records.
+See [codemaps/](codemaps/) for a full module-level map of the codebase, and `docs/adr/` for architectural decision records.
 
 ## Acknowledgements
 

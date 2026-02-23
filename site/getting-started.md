@@ -29,7 +29,7 @@ uv sync
 kist init ~/my-kicad-lib
 ```
 
-This creates a `.kist/` directory with `config.toml`, `parts.json`, and asset directories for symbols, footprints, and 3D models.
+This creates a `.kist/` directory with `config.toml`, `parts.json`, and asset directories for symbols, footprints, 3D models, and blocks.
 
 ## Link a KiCad project
 

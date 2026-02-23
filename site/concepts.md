@@ -11,7 +11,8 @@ my-library/
 │   ├── parts.json       # Part database (source of truth)
 │   ├── symbols/         # Generated .kicad_sym files (one per category)
 │   ├── footprints/
-│   └── 3dmodels/
+│   ├── 3dmodels/
+│   └── blocks/
 └── sym-lib-table        # KiCad library table (auto-managed)
 ```
 
