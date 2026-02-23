@@ -233,7 +233,7 @@ async def test_clone_symbol_selection_fills_original_footprint(
     monkeypatch.setattr("kist.kicad.discovery.detect_kicad", lambda: object())
     monkeypatch.setattr(
         "kist.kicad.indexer.clone_symbol_to_local_library",
-        lambda *args, **kwargs: "00k-Regulator_Current:HV100K5-G",
+        lambda *args, **kwargs: "00k-ICs:HV100K5-G",
     )
     monkeypatch.setattr(
         "kist.kicad.indexer.linked_footprint_for_symbol",
@@ -242,17 +242,28 @@ async def test_clone_symbol_selection_fills_original_footprint(
 
     async with editable_app.run_test():
         form = editable_app.query_one("#form", PartForm)
+        form.query_one("#category", Select).value = "IC"
         form._on_library_search_result(
             ("clone", "Regulator_Current:HV100K5-G"), "symbol"
         )
 
-        assert (
-            form.query_one("#symbol", Input).value == "00k-Regulator_Current:HV100K5-G"
-        )
+        assert form.query_one("#symbol", Input).value == "00k-ICs:HV100K5-G"
         assert (
             form.query_one("#footprint", Input).value
             == "Package_TO_SOT_SMD:SOT-223-3_TabPin2"
         )
+
+
+async def test_clone_symbol_without_category_warns(editable_app, monkeypatch):
+    async with editable_app.run_test():
+        form = editable_app.query_one("#form", PartForm)
+        form.query_one("#category", Select).value = Select.BLANK
+        form._on_library_search_result(
+            ("clone", "Regulator_Current:HV100K5-G"), "symbol"
+        )
+
+        # Symbol field should remain empty -- clone was rejected.
+        assert form.query_one("#symbol", Input).value == ""
 
 
 async def test_clone_footprint_selection_updates_local_ref(editable_app, monkeypatch):
