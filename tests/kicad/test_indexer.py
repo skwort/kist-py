@@ -239,13 +239,42 @@ def test_clone_symbol_to_local_library(kicad_env: KiCadEnvironment, tmp_path: Pa
         kicad_env,
         kist_root,
         config,
+        target_library="00k-ICs",
     )
 
-    assert cloned_ref == "00k-Regulator_Current:HV100K5-G"
-    local_path = kist_root / "symbols" / "00k-Regulator_Current.kicad_sym"
+    assert cloned_ref == "00k-ICs:HV100K5-G"
+    local_path = kist_root / "symbols" / "00k-ICs.kicad_sym"
     assert local_path.is_file()
     local_lib = SymbolLibrary.load(local_path)
     assert local_lib.get_symbol("HV100K5-G") is not None
+
+
+def test_clone_symbol_rejects_duplicate(kicad_env: KiCadEnvironment, tmp_path: Path):
+    sym_dir = kicad_env.variables["KICAD9_SYMBOL_DIR"]
+    fixture = FIXTURES / "Regulator_Current.kicad_sym"
+    (sym_dir / "Regulator_Current.kicad_sym").write_text(fixture.read_text())
+    _make_sym_lib_table(kicad_env.config_dir, sym_dir, ["Regulator_Current"])
+
+    kist_root = tmp_path / "kist-lib"
+    config = LibraryConfig(symbols_dir="symbols", library_prefix="00k", separator="-")
+
+    first = clone_symbol_to_local_library(
+        "Regulator_Current:HV100K5-G",
+        kicad_env,
+        kist_root,
+        config,
+        target_library="00k-ICs",
+    )
+    assert first is not None
+
+    second = clone_symbol_to_local_library(
+        "Regulator_Current:HV100K5-G",
+        kicad_env,
+        kist_root,
+        config,
+        target_library="00k-ICs",
+    )
+    assert second is None
 
 
 def test_clone_footprint_to_local_library(kicad_env: KiCadEnvironment, tmp_path: Path):

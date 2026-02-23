@@ -263,8 +263,8 @@ def linked_footprint_for_symbol(
     return None
 
 
-def _local_library_name(source_library: str, config: LibraryConfig) -> str:
-    """Map a source library name to a deterministic local kist library name."""
+def _mirror_library_name(source_library: str, config: LibraryConfig) -> str:
+    """Map a source library name to a prefixed local mirror name."""
     local_prefix = f"{config.library_prefix}{config.separator}"
     if source_library.startswith(local_prefix):
         return source_library
@@ -276,11 +276,19 @@ def clone_symbol_to_local_library(
     env: KiCadEnvironment,
     kist_root: Path | None,
     config: LibraryConfig | None,
+    target_library: str | None = None,
+    exists_ok: bool = False,
 ) -> str | None:
     """
-    Clone a symbol into the local kist symbols dir and return its local ref.
+    Clone a symbol into a local kist symbol library.
 
-    Returns ``None`` if inputs are invalid or the symbol cannot be found.
+    *target_library* is the library stem (e.g. ``"00k-Resistors"``).
+    When omitted the source library name is mirrored with the configured
+    prefix.
+
+    Returns the local reference on success, or ``None`` if the source
+    symbol cannot be found or the target already contains a symbol with
+    the same name (unless *exists_ok* is ``True``).
     """
     if ":" not in symbol_ref or kist_root is None or config is None:
         return None
@@ -302,7 +310,7 @@ def clone_symbol_to_local_library(
     if source_sym is None:
         return None
 
-    local_library = _local_library_name(source_library, config)
+    local_library = target_library or _mirror_library_name(source_library, config)
     symbols_dir = kist_root / config.symbols_dir
     symbols_dir.mkdir(parents=True, exist_ok=True)
     local_path = symbols_dir / f"{local_library}.kicad_sym"
@@ -311,6 +319,9 @@ def clone_symbol_to_local_library(
         local_lib = SymbolLibrary.load(local_path)
     else:
         local_lib = SymbolLibrary.empty()
+
+    if not exists_ok and local_lib.get_symbol(symbol) is not None:
+        return None
 
     local_lib.set_symbol(symbol, copy.deepcopy(source_sym))
     local_lib.save(local_path)
@@ -345,7 +356,7 @@ def clone_footprint_to_local_library(
     if source_file is None:
         return None
 
-    local_library = _local_library_name(source_library, config)
+    local_library = _mirror_library_name(source_library, config)
     local_dir = kist_root / config.footprints_dir / f"{local_library}.pretty"
     local_dir.mkdir(parents=True, exist_ok=True)
     local_file = local_dir / f"{footprint}.kicad_mod"

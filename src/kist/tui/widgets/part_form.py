@@ -566,10 +566,34 @@ class PartForm(Static):
         else:
             self.notify("Clone failed: footprint not found", severity="error")
 
+    def _resolve_target_library(self) -> str | None:
+        """Derive the target symbol library stem from the selected category."""
+        from kist.kicad.mapping import library_filename
+
+        cat_select = self.query_one("#category", Select)
+        if cat_select.value is Select.BLANK:
+            return None
+
+        code = str(cat_select.value)
+        cat_def = self._categories.get(code)
+        cat_name = cat_def.name if cat_def else code
+
+        config = getattr(self.app, "library_config", None)
+        prefix = config.library_prefix if config else "00k"
+        sep = config.separator if config else "-"
+
+        # library_filename returns "00k-Resistors.kicad_sym"; we need the stem.
+        return library_filename(cat_name, prefix, sep).removesuffix(".kicad_sym")
+
     def _clone_symbol_reference(self, symbol_ref: str) -> None:
-        """Clone selected symbol into the local library and select it."""
+        """Clone selected symbol into the category's local library."""
         from kist.kicad.discovery import detect_kicad
         from kist.kicad.indexer import clone_symbol_to_local_library
+
+        target = self._resolve_target_library()
+        if target is None:
+            self.notify("Set a category before cloning a symbol", severity="warning")
+            return
 
         env = detect_kicad()
         if env is None:
@@ -581,6 +605,7 @@ class PartForm(Static):
             env,
             kist_root=getattr(self.app, "library_path", None),
             config=getattr(self.app, "library_config", None),
+            target_library=target,
         )
         if cloned_symbol:
             self.query_one("#symbol", Input).value = cloned_symbol
@@ -589,7 +614,13 @@ class PartForm(Static):
                 self.app._library_index = None  # type: ignore[attr-defined]
             self._apply_linked_footprint(symbol_ref)
         else:
-            self.notify("Clone failed: symbol not found", severity="error")
+            symbol_name = (
+                symbol_ref.split(":", 1)[-1] if ":" in symbol_ref else symbol_ref
+            )
+            self.notify(
+                f"Symbol {symbol_name} already exists in {target}",
+                severity="warning",
+            )
 
     # -- Spec management ---
 
