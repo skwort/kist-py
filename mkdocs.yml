@@ -28,7 +28,8 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Concepts: concepts.md
-  - CLI Reference: cli.md
+  - Configuration: configuration.md
+  - CLI: cli.md
   - Changelog: changelog.md
 
 plugins:

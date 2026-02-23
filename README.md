@@ -51,10 +51,11 @@ uv sync
 ### Create a library
 
 ```bash
-kist init ~/my-kicad-lib
+kist init -p ~/my-kicad-lib
 ```
 
-This creates a `.kist/` directory with `config.toml`, `parts.json`, and asset directories for symbols, footprints, 3D models, and blocks.
+This opens the init wizard. Use `--no-tui` to skip it and create
+the library with defaults.
 
 ### Link a KiCad project
 
@@ -98,12 +99,12 @@ kist manages a parts library stored in a `.kist/` directory:
 ```
 my-library/
 ├── .kist/
-│   ├── config.toml      # Library configuration and categories
-│   ├── parts.json       # Part database (source of truth)
-│   ├── symbols/         # Generated .kicad_sym files (one per category)
-│   ├── footprints/
-│   ├── 3dmodels/
-│   └── blocks/
+│   └── config.toml      # Library configuration and categories
+├── parts.json           # Part database (source of truth)
+├── symbols/             # Generated .kicad_sym files (one per category)
+├── footprints/
+├── 3dmodels/
+├── blocks/
 └── sym-lib-table        # KiCad library table (auto-managed)
 ```
 
@@ -112,7 +113,7 @@ Parts are classified into three tiers:
 | Tier | Example | Key fields |
 |---|---|---|
 | **Proprietary** | STM32F405 | MPN, manufacturer |
-| **Semi-jellybean** | TL072 | MPN + alternates |
+| **Semi-jellybean** | TL072 | MPN, manufacturer + alternates |
 | **Jellybean** | 10K resistor | Specifications + alternates |
 
 Each part gets a canonical name generated from its category, specifications, and package (e.g. `RES-10K-1PCT-0603`, `CAP-100n-50V-X7R-0402`). Names, values, and descriptions are derived from structured data -- not typed by hand.

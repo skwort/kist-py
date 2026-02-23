@@ -7,7 +7,8 @@ Usage:
 Creates a temporary library with demo parts and captures SVG screenshots.
 
 Options:
-    --screen SCREEN   Screen to capture: browse, detail, add (default: browse)
+    --screen SCREEN   Screen to capture: browse, detail, add, init,
+                      symbol-search, footprint-search (default: browse)
     --size WxH        Terminal size (default: 120x36)
     --output PATH     Output path (default: site/assets/<screen>-screenshot.svg)
     --part NAME       Part to open in detail view (default: IC-STM32F405RGT6)
@@ -313,6 +314,9 @@ def _strip_window_chrome(svg: str) -> str:
     side/bottom padding, rounded corners, a border stroke, and macOS
     traffic-light circles.  We strip all of that.
     """
+    # Replace Rich's default Fira Code with JetBrains Mono
+    svg = svg.replace("Fira Code", "JetBrains Mono")
+
     # Rich's hardcoded layout constants
     margin = 1
     pad_top = 40
@@ -389,9 +393,63 @@ async def capture(
     """Capture a screenshot of the TUI."""
     from kist.tui.app import KistApp
     from kist.tui.screens.detail import DetailModal
+    from kist.tui.screens.init import InitScreen
 
     lib_path = create_demo_library()
     os.chdir(lib_path)
+
+    if screen in ("symbol-search", "footprint-search"):
+        from kist.kicad.discovery import detect_kicad
+        from kist.kicad.indexer import load_or_build_index
+        from kist.tui.modals.library_search import LibrarySearchModal
+
+        env = detect_kicad()
+        if env is None:
+            print("KiCad not found -- cannot capture library search screenshot")
+            return
+
+        index = load_or_build_index(env)
+        kind = "symbol" if screen == "symbol-search" else "footprint"
+        title = "Symbols" if kind == "symbol" else "Footprints"
+        items = index.symbols if kind == "symbol" else index.footprints
+
+        app = KistApp()
+        async with app.run_test(size=size) as pilot:
+            for _ in range(10):
+                await pilot.pause()
+            modal = LibrarySearchModal(
+                items=items,
+                title=title,
+                item_kind=kind,
+            )
+            # SVG export can't capture sixel/kitty image protocol content,
+            # so disable the preview panel for screenshots.
+            modal._has_preview = False
+            app.push_screen(modal)
+            for _ in range(10):
+                await pilot.pause()
+
+            output.parent.mkdir(parents=True, exist_ok=True)
+            svg = _strip_window_chrome(app.export_screenshot(title=""))
+            output.write_text(svg, encoding="utf-8")
+            print(f"Saved: {output}")
+        return
+
+    if screen == "init":
+        # Init screen doesn't need library discovery -- push directly
+        app = KistApp()
+        async with app.run_test(size=size) as pilot:
+            for _ in range(10):
+                await pilot.pause()
+            app.push_screen(InitScreen(init_path=Path("~/my-kicad-lib")))
+            for _ in range(10):
+                await pilot.pause()
+
+            output.parent.mkdir(parents=True, exist_ok=True)
+            svg = _strip_window_chrome(app.export_screenshot(title=""))
+            output.write_text(svg, encoding="utf-8")
+            print(f"Saved: {output}")
+        return
 
     start = "add" if screen == "add" else None
     app = KistApp(start_screen=start)
@@ -432,7 +490,14 @@ def main() -> None:
     parser.add_argument(
         "--screen",
         default="browse",
-        choices=["browse", "detail", "add"],
+        choices=[
+            "browse",
+            "detail",
+            "add",
+            "init",
+            "symbol-search",
+            "footprint-search",
+        ],
         help="Screen to capture (default: browse)",
     )
     parser.add_argument(
