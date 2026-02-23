@@ -135,3 +135,12 @@ async def test_modal_border_title():
         await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS, title="Symbols"))
         container = app.screen.query_one("#libsearch-container")
         assert container.border_title == "Symbols"
+
+
+async def test_modal_loading_state_shows_status():
+    app = ModalApp()
+    async with app.run_test():
+        modal = LibrarySearchModal(title="Symbols", item_kind="symbol")
+        await app.push_screen(modal)
+        status = app.screen.query_one("#libsearch-status", Label)
+        assert "loading" in str(status.content).lower()

@@ -487,33 +487,14 @@ class PartForm(Static):
 
     def _open_library_search(self, field: str) -> None:
         """Push LibrarySearchModal for the given field (symbol or footprint)."""
-        from kist.kicad.indexer import LibraryIndex
-        from kist.tui.app import KistApp
         from kist.tui.modals.library_search import LibrarySearchModal
-
-        app: KistApp = self.app  # type: ignore[assignment]
-        index: LibraryIndex | None = app.get_library_index()
-        if index is None:
-            return
-
-        if field == "symbol":
-            items = index.symbols
-            title = "Symbols"
-        else:
-            items = index.footprints
-            title = "Footprints"
-
-        if not items:
-            self.notify(
-                f"No {title.lower()} found in library index", severity="warning"
-            )
-            return
 
         item_kind: Literal["symbol", "footprint"] = (
             "symbol" if field == "symbol" else "footprint"
         )
-        app.push_screen(
-            LibrarySearchModal(items, title=title, item_kind=item_kind),
+        title = "Symbols" if field == "symbol" else "Footprints"
+        self.app.push_screen(
+            LibrarySearchModal(title=title, item_kind=item_kind),
             callback=lambda ref: self._on_library_search_result(ref, field),
         )
 
