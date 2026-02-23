@@ -1,0 +1,309 @@
+/* -- Palette (null theme) ---
+ *
+ * Canonical source: nvim/colors/null.lua + kist/tui/themes.py
+ */
+:root {
+    --null-bg: #000000;
+    --null-fg: #b3b3b3;
+    --null-black: #000000;
+    --null-red: #cc5555;
+    --null-green: #55cc55;
+    --null-yellow: #cdcd55;
+    --null-blue: #7d7dff;
+    --null-magenta: #cc55cc;
+    --null-cyan: #7acaca;
+    --null-white: #cccccc;
+    --null-bright-black: #555555;
+    --null-bright-magenta: #ff55ff;
+    --null-bright-white: #ffffff;
+    --null-surface: #0a0a0a;
+    --null-panel: #222222;
+    --null-accent: var(--null-magenta);
+    --null-accent-dim: rgba(204, 85, 204, 0.3);
+}
+
+/* Override Material palette to match null theme */
+[data-md-color-scheme="slate"] {
+    --md-default-bg-color: var(--null-bg);
+    --md-default-fg-color: var(--null-fg);
+    --md-default-fg-color--light: var(--null-bright-black);
+    --md-default-fg-color--lightest: var(--null-panel);
+    --md-primary-fg-color: var(--null-accent);
+    --md-primary-bg-color: var(--null-bright-white);
+    --md-accent-fg-color: var(--null-bright-magenta);
+    --md-primary-fg-color--dark: var(--null-panel);
+    --md-typeset-a-color: var(--null-accent);
+    --md-code-bg-color: var(--null-surface);
+    --md-footer-bg-color: var(--null-surface);
+    --md-footer-bg-color--dark: var(--null-bg);
+}
+
+/* -- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "JetBrains Mono", "Roboto Mono", monospace;
+    font-weight: 700;
+    color: var(--null-bright-white) !important;
+}
+
+/* -- Page background --- */
+body {
+    background: linear-gradient(
+        180deg,
+        var(--null-bg) 0%,
+        hsl(300deg 10% 4%) 40%,
+        hsl(300deg 15% 7%) 70%,
+        hsl(300deg 20% 10%) 100%
+    );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* -- Code and tables --- */
+code {
+    background: rgba(204, 85, 204, 0.08) !important;
+    border: 1px solid var(--null-accent-dim) !important;
+}
+
+table {
+    background: rgba(204, 85, 204, 0.06) !important;
+    border: 1px solid var(--null-accent-dim) !important;
+}
+
+span.filename {
+    background: rgba(204, 85, 204, 0.08) !important;
+    border: 1px solid var(--null-accent-dim) !important;
+    border-bottom: none !important;
+    color: rgba(204, 85, 204, 0.5) !important;
+}
+
+/* -- Navigation --- */
+.md-nav__link {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.md-nav__link--active {
+    color: var(--null-accent) !important;
+}
+
+/* Hide logo + site name from desktop sidebar (already in header) */
+@media (min-width: 76.25em) {
+    .md-nav--primary > .md-nav__title[for="__drawer"] {
+        display: none;
+    }
+}
+
+/* -- Mobile drawer --- */
+
+/* Shrink logo and inline it with the site name */
+.md-nav--primary .md-nav__title .md-logo {
+    position: static;
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    padding: 0;
+    margin: 0 0.3rem 0 0;
+    vertical-align: middle;
+}
+
+.md-nav--primary .md-nav__title .md-logo img,
+.md-nav--primary .md-nav__title .md-logo svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+/* Collapse the oversized drawer title (was sized for large logo) */
+.md-nav--primary .md-nav__title[for="__drawer"] {
+    height: auto;
+    padding: 0.6rem 0.8rem;
+}
+
+/* GitHub source link in drawer */
+.md-source,
+.md-source__icon,
+.md-source__repository {
+    color: var(--null-fg) !important;
+}
+
+.md-source__icon svg {
+    fill: var(--null-fg) !important;
+}
+
+nav.md-nav.md-nav--secondary {
+    border-left-color: var(--null-accent) !important;
+}
+
+/* Inline header nav links */
+.md-header__nav {
+    display: flex;
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    gap: 0.2rem;
+    align-items: center;
+}
+
+/* Search expands as overlay so nav links and source stay in place.
+ * Inner is always absolute on desktop -- no position flip means no
+ * one-frame layout shift. Container keeps fixed dimensions so the
+ * flex row never redistributes. */
+@media (min-width: 60em) {
+    .md-search {
+        width: 11.7rem;
+        min-height: 2rem;
+        flex-shrink: 0;
+    }
+
+    .md-search__inner {
+        position: absolute !important;
+        right: 0 !important;
+        height: auto !important;
+    }
+}
+
+.md-header__nav-link {
+    color: var(--null-fg) !important;
+    font-size: 0.72rem;
+    text-decoration: none;
+    padding: 0.4rem 0.55rem;
+    position: relative;
+    white-space: nowrap;
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+}
+
+.md-header__nav-link:hover {
+    opacity: 1;
+    color: var(--null-bright-white) !important;
+}
+
+.md-header__nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 50%;
+    background-color: var(--null-accent);
+    transition: width 0.16s ease-out, left 0.16s ease-out;
+}
+
+.md-header__nav-link:hover::after {
+    width: 100%;
+    left: 0;
+}
+
+.md-header__nav-link--active {
+    color: var(--null-bright-white) !important;
+    opacity: 1;
+    font-weight: 600;
+}
+
+.md-header__nav-link--active::after {
+    width: 100%;
+    left: 0;
+}
+
+/* Hide inline nav on mobile (drawer takes over) */
+@media (max-width: 76.1875em) {
+    .md-header__nav {
+        display: none;
+    }
+}
+
+/* -- Header and content --- */
+.md-header {
+    position: sticky;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Always show site name, never swap to page title */
+.md-header__topic {
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 0 !important;
+}
+
+/* Hide the page-title topic entirely */
+.md-header__topic + .md-header__topic {
+    display: none;
+}
+
+/* Only shrink title when inline nav is visible */
+@media (min-width: 76.25em) {
+    .md-header__title {
+        flex-grow: 0;
+        margin-right: 0.5rem;
+    }
+}
+
+.md-header--shadow {
+    box-shadow: none;
+}
+
+.md-content {
+    background-color: transparent;
+    padding-bottom: 2.5rem;
+}
+
+.md-nav__title {
+    box-shadow: none !important;
+    background-color: transparent !important;
+}
+
+/* -- Body text and links --- */
+article p {
+    color: var(--null-fg);
+}
+
+.md-typeset a {
+    color: var(--null-accent) !important;
+}
+
+.md-typeset a:hover {
+    color: var(--null-bright-magenta) !important;
+}
+
+/* -- Search --- */
+.md-search__form {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+    background-color: var(--null-surface) !important;
+}
+
+.md-search__output mark {
+    color: var(--null-accent);
+}
+
+.md-search-result__more div {
+    color: var(--null-accent) !important;
+    opacity: 0.8;
+}
+
+/* -- Article width --- */
+article {
+    max-width: 840px;
+    margin: 0 auto !important;
+    padding: 0 1rem;
+
+    & p mark {
+        background-color: rgba(204, 85, 204, 0.2) !important;
+    }
+}
+
+@media (min-width: 1220px) {
+    article {
+        margin: 0 0 !important;
+    }
+}
+
+/* -- Footer --- */
+footer .md-ellipsis {
+    font-family: "JetBrains Mono", "Roboto Mono", monospace;
+}

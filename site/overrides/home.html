@@ -1,0 +1,285 @@
+{% extends "main.html" %}
+{% block tabs %}
+{{ super() }}
+<style>
+    html {
+        scroll-behavior: smooth;
+    }
+
+    .md-content {
+        display: none;
+    }
+
+    .md-footer {
+        display: none;
+    }
+
+    .md-dialog {
+        display: none;
+    }
+
+    .hero {
+        padding: 4rem 1.8rem 2rem;
+        text-align: left;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    #home-title {
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: var(--null-bright-white, #ffffff);
+        margin: 0 0 0.4rem 0;
+        line-height: 1.2;
+    }
+
+    #home-subtitle {
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--null-fg, #b3b3b3);
+        margin: 0 0 2rem 0;
+    }
+
+    .accent-text {
+        color: var(--null-accent, #cc55cc) !important;
+        text-decoration: none;
+    }
+
+    .button-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 3rem;
+    }
+
+    a.home-button {
+        color: var(--null-bright-white, #ffffff);
+        padding: 0.65rem 1.3rem;
+        background-color: var(--null-surface, #0a0a0a);
+        border: 2px solid var(--null-accent-dim, rgba(204, 85, 204, 0.3));
+        border-radius: 2px;
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 0.85rem;
+        text-decoration: none;
+        transition: border-color 0.15s ease;
+    }
+
+    a.home-button:hover {
+        border-color: var(--null-accent, #cc55cc);
+        color: var(--null-bright-white, #ffffff) !important;
+    }
+
+    a.home-button.primary {
+        border-color: var(--null-accent, #cc55cc);
+        background-color: rgba(204, 85, 204, 0.1);
+    }
+
+    /* -- Screenshot placeholder --- */
+    .hero-image {
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto 4rem;
+        padding: 0 1.8rem;
+        box-sizing: border-box;
+    }
+
+    .hero-image img,
+    .hero-image svg {
+        display: block;
+        width: 100%;
+        max-width: 900px;
+        height: auto;
+        border-radius: 4px;
+        border: 2px solid var(--null-accent-dim, rgba(204, 85, 204, 0.3));
+    }
+
+    /* -- Feature grid --- */
+    .features {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 1.8rem 4rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    @media (max-width: 600px) {
+        .features {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .feature {
+        padding: 1.2rem;
+        border-left: 2px solid var(--null-accent-dim, rgba(204, 85, 204, 0.3));
+    }
+
+    .feature h3 {
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--null-white, #cccccc) !important;
+        margin: 0 0 0.4rem 0;
+    }
+
+    .feature p {
+        font-size: 0.85rem;
+        color: var(--null-fg, #b3b3b3);
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* -- Install snippet --- */
+    .install-section {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 1.8rem 4rem;
+        box-sizing: border-box;
+    }
+
+    .install-section pre {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .install-section pre > code {
+        overflow-x: auto;
+    }
+
+    .install-section h2 {
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+
+    .install-section a {
+        color: var(--null-fg, #b3b3b3);
+        text-decoration: none;
+    }
+
+    .install-section a:hover {
+        color: var(--null-accent, #cc55cc);
+    }
+
+    /* -- Home footer --- */
+    .home-footer {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 3rem 1.8rem 2rem;
+        border-top: 1px solid var(--null-panel, #222222);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    @media (max-width: 30em) {
+        .home-footer {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+
+    .home-footer-copyright {
+        color: var(--null-fg, #b3b3b3);
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 0.8rem;
+    }
+
+    .home-footer-links {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .home-footer-links a {
+        color: var(--null-fg, #b3b3b3);
+        font-family: "JetBrains Mono", "Roboto Mono", monospace;
+        font-size: 0.8rem;
+        text-decoration: none;
+    }
+
+    .home-footer-links a:hover {
+        color: var(--null-accent, #cc55cc);
+    }
+</style>
+
+<div class="hero">
+    <h1 id="home-title">kist</h1>
+    <p id="home-subtitle">
+        A lightweight component library manager for
+        <a href="https://www.kicad.org/" class="accent-text">KiCad</a>.<br>
+        Paste a supplier URL, get a part. Names, symbols, and lib tables --
+        managed automatically.
+    </p>
+    <div class="button-bar">
+        <a href="getting-started/" class="home-button primary">Get started</a>
+        <a href="concepts/" class="home-button">How it works</a>
+        <a href="https://github.com/skwort/kist" class="home-button">GitHub</a>
+    </div>
+</div>
+
+<div class="hero-image">
+    <img src="assets/detail-screenshot.svg" alt="kist TUI -- browse screen with detail view modal" width="1482" height="928" />
+</div>
+
+<div class="features">
+    <div class="feature">
+        <h3>Supplier integration</h3>
+        <p>Paste a DigiKey URL or MPN. kist fetches metadata,
+        detects the part tier, and populates a form for review.</p>
+    </div>
+    <div class="feature">
+        <h3>Canonical naming</h3>
+        <p>Part names are generated from specifications --
+        <code>RES-10K-1PCT-0603</code>. No more naming inconsistencies.</p>
+    </div>
+    <div class="feature">
+        <h3>KiCad symbols</h3>
+        <p>Resistor, capacitor, and inductor symbols generated from templates.
+        Other parts get a stub with correct properties.</p>
+    </div>
+    <div class="feature">
+        <h3>Git-native</h3>
+        <p>Parts in JSON, config in TOML. No servers, no databases.
+        Readable diffs and easy merges.</p>
+    </div>
+    <div class="feature">
+        <h3>TUI and CLI</h3>
+        <p>Browse, search, add, edit, and delete from an interactive terminal
+        interface or via CLI commands.</p>
+    </div>
+    <div class="feature">
+        <h3>Library validation</h3>
+        <p><code>kist check</code> catches name drift and duplicate identities
+        before they become problems.</p>
+    </div>
+</div>
+
+<div class="install-section md-typeset">
+    <h2>Install</h2>
+    <div class="highlight"><pre><span></span><code><span class="c1"># With Nix flakes</span>
+nix profile install github:skwort/kist
+
+<span class="c1"># With uv</span>
+uv tool install kist
+
+<span class="c1"># From source</span>
+git clone https://github.com/skwort/kist.git &amp;&amp; cd kist &amp;&amp; uv sync</code></pre></div>
+</div>
+
+<footer class="home-footer">
+    <div class="home-footer-copyright">&copy; 2026 Sam Kwort</div>
+    <div class="home-footer-links">
+        <a href="https://github.com/skwort/kist">GitHub</a>
+        <a href="https://github.com/skwort/kist/issues">Issues</a>
+        <a href="https://www.kicad.org/">KiCad</a>
+    </div>
+</footer>
+
+{% endblock %}
+{% block content %}{% endblock %}
+{% block footer %}{% endblock %}

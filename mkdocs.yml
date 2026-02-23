@@ -1,0 +1,55 @@
+site_name: Kist
+site_url: https://kist.sh
+repo_url: https://github.com/skwort/kist
+repo_name: skwort/kist
+docs_dir: site
+site_dir: _site
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: custom
+  custom_dir: site/overrides
+  icon:
+    logo: fontawesome/solid/toolbox
+  font:
+    text: Inter
+  features:
+    - search.suggest
+    - search.highlight
+    - navigation.footer
+    - toc.integrate
+
+extra_css:
+  - css/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Concepts: concepts.md
+  - CLI Reference: cli.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - toc:
+      permalink: true
+  - footnotes
+  - tables
+  - pymdownx.keys
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.superfences
+  - pymdownx.details
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/skwort/kist
