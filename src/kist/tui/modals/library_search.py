@@ -79,6 +79,7 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
         items: list[LibraryItem] | None = None,
         title: str = "Footprints",
         item_kind: Literal["symbol", "footprint"] | None = None,
+        initial_value: str = "",
     ) -> None:
         super().__init__()
         self._items: list[LibraryItem] = items or []
@@ -86,6 +87,7 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
         self._filtered: list[LibraryItem] = list(self._items)
         self._loading = items is None
         self._debounce_timer: Timer | None = None
+        self._initial_value = initial_value
 
         if item_kind is not None:
             self._item_kind = item_kind
@@ -125,6 +127,7 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
         table.add_columns("Library", "Name", "Source")
         table.cursor_type = "row"
         table.zebra_stripes = True
+
         self.query_one("#libsearch-input", Input).focus()
 
         if self._loading:
@@ -132,6 +135,7 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
             self._load_index()
         else:
             self._populate_table()
+            self._scroll_to_value()
             self._init_preview()
 
     def _init_preview(self) -> None:
@@ -169,6 +173,7 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
         self._filtered = list(items)
         self._loading = False
         self._populate_table()
+        self._scroll_to_value()
         self._init_preview()
 
     def _fetch_index(self):
@@ -250,6 +255,19 @@ class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
             self._set_preview_placeholder("No matching items")
             self._hide_unit_select()
             self._current_ref = None
+
+    def _scroll_to_value(self) -> None:
+        """Move the matching item to the top of the list and select it."""
+        if not self._initial_value:
+            return
+        for idx, item in enumerate(self._filtered):
+            if item.reference == self._initial_value:
+                if idx != 0:
+                    self._filtered.insert(0, self._filtered.pop(idx))
+                    self._populate_table()
+                table = self.query_one("#libsearch-table", DataTable)
+                table.move_cursor(row=0)
+                return
 
     def _run_filter(self) -> None:
         query = self.query_one("#libsearch-input", Input).value.strip().lower()

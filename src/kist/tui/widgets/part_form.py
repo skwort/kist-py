@@ -492,8 +492,11 @@ class PartForm(Static):
             "symbol" if field == "symbol" else "footprint"
         )
         title = "Symbols" if field == "symbol" else "Footprints"
+        current_value = self.query_one(f"#{field}", Input).value
         self.app.push_screen(
-            LibrarySearchModal(title=title, item_kind=item_kind),
+            LibrarySearchModal(
+                title=title, item_kind=item_kind, initial_value=current_value
+            ),
             callback=lambda result: self._on_library_search_result(result, field),
         )
 
