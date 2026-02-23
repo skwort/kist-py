@@ -54,7 +54,10 @@ def _load_symbol_library(path: Path, mtime_ns: int):
     return SymbolLibrary.load(path)
 
 
-class LibrarySearchModal(ModalScreen[str | None]):
+LibrarySearchResult = str | tuple[Literal["clone"], str] | None
+
+
+class LibrarySearchModal(ModalScreen[LibrarySearchResult]):
     """
     Search and select a library item (footprint or symbol).
 
@@ -68,6 +71,7 @@ class LibrarySearchModal(ModalScreen[str | None]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
+        Binding("c", "clone", "Clone to local"),
     ]
 
     def __init__(
@@ -118,7 +122,7 @@ class LibrarySearchModal(ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         table = self.query_one("#libsearch-table", DataTable)
-        table.add_columns("Library", "Name")
+        table.add_columns("Library", "Name", "Source")
         table.cursor_type = "row"
         table.zebra_stripes = True
         self.query_one("#libsearch-input", Input).focus()
@@ -239,7 +243,7 @@ class LibrarySearchModal(ModalScreen[str | None]):
         table = self.query_one("#libsearch-table", DataTable)
         table.clear()
         for item in self._filtered[:_MAX_ROWS]:
-            table.add_row(item.library, item.name, key=item.reference)
+            table.add_row(item.library, item.name, item.source, key=item.reference)
         self.query_one("#libsearch-status", Label).update(self._status_text())
 
         if self._has_preview and table.row_count == 0:
@@ -269,6 +273,13 @@ class LibrarySearchModal(ModalScreen[str | None]):
             return
         ref = str(event.row_key.value)
         self.dismiss(ref)
+
+    def _selected_ref(self) -> str | None:
+        table = self.query_one("#libsearch-table", DataTable)
+        if table.row_count == 0:
+            return None
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        return str(row_key.value)
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if (
@@ -453,3 +464,9 @@ class LibrarySearchModal(ModalScreen[str | None]):
 
     def action_cancel(self) -> None:
         self.dismiss(None)
+
+    def action_clone(self) -> None:
+        ref = self._selected_ref()
+        if ref is None:
+            return
+        self.dismiss(("clone", ref))

@@ -104,6 +104,31 @@ async def test_modal_row_select_returns_reference():
         assert results[0] == "Resistor_SMD:R_0402_1005Metric"
 
 
+async def test_modal_clone_returns_action_tuple():
+    app = ModalApp()
+    async with app.run_test() as pilot:
+        results = []
+        await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS), callback=results.append)
+        table = app.screen.query_one("#libsearch-table", DataTable)
+        table.focus()
+        await pilot.pause()
+        await pilot.press("c")
+
+        assert len(results) == 1
+        assert results[0] == ("clone", "Resistor_SMD:R_0402_1005Metric")
+
+
+async def test_modal_shows_source_column():
+    app = ModalApp()
+    async with app.run_test():
+        await app.push_screen(LibrarySearchModal(SAMPLE_ITEMS))
+        table = app.screen.query_one("#libsearch-table", DataTable)
+        first_key = next(iter(table.rows))
+        first_row = table.get_row(first_key)
+        assert len(first_row) == 3
+        assert first_row[2] == "kicad"
+
+
 async def test_modal_empty_items():
     app = ModalApp()
     async with app.run_test():

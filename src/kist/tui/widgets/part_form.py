@@ -494,18 +494,38 @@ class PartForm(Static):
         title = "Symbols" if field == "symbol" else "Footprints"
         self.app.push_screen(
             LibrarySearchModal(title=title, item_kind=item_kind),
-            callback=lambda ref: self._on_library_search_result(ref, field),
+            callback=lambda result: self._on_library_search_result(result, field),
         )
 
-    def _on_library_search_result(self, ref: str | None, field: str) -> None:
-        """Handle LibrarySearchModal result: populate the Input."""
-        if ref is None:
+    def _on_library_search_result(
+        self,
+        result: str | tuple[Literal["clone"], str] | None,
+        field: str,
+    ) -> None:
+        """Handle LibrarySearchModal result: select or clone into local library."""
+        if result is None:
             return
-        self.query_one(f"#{field}", Input).value = ref
 
-        if field != "symbol":
+        if isinstance(result, tuple):
+            clone_requested = result[0] == "clone"
+            ref = result[1]
+        else:
+            clone_requested = False
+            ref = result
+
+        if not clone_requested:
+            self.query_one(f"#{field}", Input).value = ref
+            if field == "symbol":
+                self._apply_linked_footprint(ref)
             return
 
+        if field == "symbol":
+            self._clone_symbol_reference(ref)
+        else:
+            self._clone_footprint_reference(ref)
+
+    def _apply_linked_footprint(self, symbol_ref: str) -> None:
+        """Auto-fill footprint from linked symbol property when available."""
         from kist.kicad.discovery import detect_kicad
         from kist.kicad.indexer import linked_footprint_for_symbol
 
@@ -514,13 +534,62 @@ class PartForm(Static):
             return
 
         linked = linked_footprint_for_symbol(
-            ref,
+            symbol_ref,
             env,
             kist_root=getattr(self.app, "library_path", None),
             config=getattr(self.app, "library_config", None),
         )
         if linked:
             self.query_one("#footprint", Input).value = linked
+
+    def _clone_footprint_reference(self, footprint_ref: str) -> None:
+        """Clone selected footprint into the local library and select it."""
+        from kist.kicad.discovery import detect_kicad
+        from kist.kicad.indexer import clone_footprint_to_local_library
+
+        env = detect_kicad()
+        if env is None:
+            self.notify("Clone failed: KiCad not detected", severity="error")
+            return
+
+        cloned = clone_footprint_to_local_library(
+            footprint_ref,
+            env,
+            kist_root=getattr(self.app, "library_path", None),
+            config=getattr(self.app, "library_config", None),
+        )
+        if cloned:
+            self.query_one("#footprint", Input).value = cloned
+            self.notify(f"Cloned footprint: {cloned}")
+            if hasattr(self.app, "_library_index"):
+                self.app._library_index = None  # type: ignore[attr-defined]
+        else:
+            self.notify("Clone failed: footprint not found", severity="error")
+
+    def _clone_symbol_reference(self, symbol_ref: str) -> None:
+        """Clone selected symbol into the local library and select it."""
+        from kist.kicad.discovery import detect_kicad
+        from kist.kicad.indexer import clone_symbol_to_local_library
+
+        env = detect_kicad()
+        if env is None:
+            self.notify("Clone failed: KiCad not detected", severity="error")
+            return
+
+        cloned_symbol = clone_symbol_to_local_library(
+            symbol_ref,
+            env,
+            kist_root=getattr(self.app, "library_path", None),
+            config=getattr(self.app, "library_config", None),
+        )
+        if cloned_symbol:
+            self.query_one("#symbol", Input).value = cloned_symbol
+            self.notify(f"Cloned symbol: {cloned_symbol}")
+            if hasattr(self.app, "_library_index"):
+                self.app._library_index = None  # type: ignore[attr-defined]
+            self._apply_linked_footprint(symbol_ref)
+        else:
+            self.notify("Clone failed: symbol not found", severity="error")
 
     # -- Spec management ---
 
