@@ -9,12 +9,14 @@ top-level symbol names without full S-expression parsing.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from shutil import copy2
 
 import platformdirs
 
@@ -188,6 +190,33 @@ def _symbol_paths_for_library(
     return paths
 
 
+def _footprint_dirs_for_library(
+    library: str,
+    env: KiCadEnvironment,
+    kist_root: Path | None = None,
+    config: LibraryConfig | None = None,
+) -> list[Path]:
+    """Return candidate .pretty dirs for a logical footprint library name."""
+    dirs: list[Path] = []
+    seen: set[Path] = set()
+
+    fp_table = env.config_dir / "fp-lib-table"
+    for entry in parse_lib_table(fp_table):
+        if entry.name != library:
+            continue
+        lib_path = resolve_uri(entry.uri, env)
+        if lib_path.is_dir() and lib_path not in seen:
+            dirs.append(lib_path)
+            seen.add(lib_path)
+
+    if kist_root and config:
+        kist_fp_path = kist_root / config.footprints_dir / f"{library}.pretty"
+        if kist_fp_path.is_dir() and kist_fp_path not in seen:
+            dirs.append(kist_fp_path)
+
+    return dirs
+
+
 def _linked_footprint_from_symbol_file(path: Path, symbol: str) -> str | None:
     """Extract non-empty Footprint property for one symbol in one library file."""
     try:
@@ -232,6 +261,99 @@ def linked_footprint_for_symbol(
         if linked:
             return linked
     return None
+
+
+def _local_library_name(source_library: str, config: LibraryConfig) -> str:
+    """Map a source library name to a deterministic local kist library name."""
+    local_prefix = f"{config.library_prefix}{config.separator}"
+    if source_library.startswith(local_prefix):
+        return source_library
+    return f"{local_prefix}{source_library}"
+
+
+def clone_symbol_to_local_library(
+    symbol_ref: str,
+    env: KiCadEnvironment,
+    kist_root: Path | None,
+    config: LibraryConfig | None,
+) -> str | None:
+    """
+    Clone a symbol into the local kist symbols dir and return its local ref.
+
+    Returns ``None`` if inputs are invalid or the symbol cannot be found.
+    """
+    if ":" not in symbol_ref or kist_root is None or config is None:
+        return None
+
+    source_library, symbol = symbol_ref.split(":", 1)
+    if not source_library or not symbol:
+        return None
+
+    source_paths = _symbol_paths_for_library(source_library, env, kist_root, config)
+    source_sym = None
+    for path in source_paths:
+        try:
+            source_lib = SymbolLibrary.load(path)
+            source_sym = source_lib.get_symbol(symbol)
+        except Exception:
+            continue
+        if source_sym is not None:
+            break
+    if source_sym is None:
+        return None
+
+    local_library = _local_library_name(source_library, config)
+    symbols_dir = kist_root / config.symbols_dir
+    symbols_dir.mkdir(parents=True, exist_ok=True)
+    local_path = symbols_dir / f"{local_library}.kicad_sym"
+
+    if local_path.exists():
+        local_lib = SymbolLibrary.load(local_path)
+    else:
+        local_lib = SymbolLibrary.empty()
+
+    local_lib.set_symbol(symbol, copy.deepcopy(source_sym))
+    local_lib.save(local_path)
+    return f"{local_library}:{symbol}"
+
+
+def clone_footprint_to_local_library(
+    footprint_ref: str,
+    env: KiCadEnvironment,
+    kist_root: Path | None,
+    config: LibraryConfig | None,
+) -> str | None:
+    """
+    Clone a footprint into the local kist footprints dir and return local ref.
+
+    Returns ``None`` if inputs are invalid or the footprint cannot be found.
+    """
+    if ":" not in footprint_ref or kist_root is None or config is None:
+        return None
+
+    source_library, footprint = footprint_ref.split(":", 1)
+    if not source_library or not footprint:
+        return None
+
+    source_dirs = _footprint_dirs_for_library(source_library, env, kist_root, config)
+    source_file: Path | None = None
+    for lib_dir in source_dirs:
+        candidate = lib_dir / f"{footprint}.kicad_mod"
+        if candidate.is_file():
+            source_file = candidate
+            break
+    if source_file is None:
+        return None
+
+    local_library = _local_library_name(source_library, config)
+    local_dir = kist_root / config.footprints_dir / f"{local_library}.pretty"
+    local_dir.mkdir(parents=True, exist_ok=True)
+    local_file = local_dir / f"{footprint}.kicad_mod"
+
+    if source_file.resolve() != local_file.resolve():
+        copy2(source_file, local_file)
+
+    return f"{local_library}:{footprint}"
 
 
 # -- Caching ---
