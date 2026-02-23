@@ -11,9 +11,12 @@ from kist.kicad.indexer import (
     LibraryItem,
     build_footprint_index,
     build_symbol_index,
+    clone_footprint_to_local_library,
+    clone_symbol_to_local_library,
     linked_footprint_for_symbol,
     load_or_build_index,
 )
+from kist.kicad.symbols import SymbolLibrary
 from kist.models.config import LibraryConfig
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "kicad"
@@ -220,6 +223,54 @@ def test_linked_footprint_for_symbol_returns_none_when_blank(
     )
 
     assert linked is None
+
+
+def test_clone_symbol_to_local_library(kicad_env: KiCadEnvironment, tmp_path: Path):
+    sym_dir = kicad_env.variables["KICAD9_SYMBOL_DIR"]
+    fixture = FIXTURES / "Regulator_Current.kicad_sym"
+    (sym_dir / "Regulator_Current.kicad_sym").write_text(fixture.read_text())
+    _make_sym_lib_table(kicad_env.config_dir, sym_dir, ["Regulator_Current"])
+
+    kist_root = tmp_path / "kist-lib"
+    config = LibraryConfig(symbols_dir="symbols", library_prefix="00k", separator="-")
+
+    cloned_ref = clone_symbol_to_local_library(
+        "Regulator_Current:HV100K5-G",
+        kicad_env,
+        kist_root,
+        config,
+    )
+
+    assert cloned_ref == "00k-Regulator_Current:HV100K5-G"
+    local_path = kist_root / "symbols" / "00k-Regulator_Current.kicad_sym"
+    assert local_path.is_file()
+    local_lib = SymbolLibrary.load(local_path)
+    assert local_lib.get_symbol("HV100K5-G") is not None
+
+
+def test_clone_footprint_to_local_library(kicad_env: KiCadEnvironment, tmp_path: Path):
+    fp_dir = kicad_env.variables["KICAD9_FOOTPRINT_DIR"]
+    _make_pretty_dir(fp_dir, "Resistor_SMD", ["R_0603_1608Metric"])
+    _make_fp_lib_table(kicad_env.config_dir, fp_dir, ["Resistor_SMD"])
+
+    kist_root = tmp_path / "kist-lib"
+    config = LibraryConfig(footprints_dir="footprints", library_prefix="00k")
+
+    cloned_ref = clone_footprint_to_local_library(
+        "Resistor_SMD:R_0603_1608Metric",
+        kicad_env,
+        kist_root,
+        config,
+    )
+
+    assert cloned_ref == "00k-Resistor_SMD:R_0603_1608Metric"
+    local_fp = (
+        kist_root
+        / "footprints"
+        / "00k-Resistor_SMD.pretty"
+        / "R_0603_1608Metric.kicad_mod"
+    )
+    assert local_fp.is_file()
 
 
 # -- load_or_build_index ---
