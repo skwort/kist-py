@@ -1,0 +1,32 @@
+name: Feature request
+description: New functionality or enhancement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What problem does this solve? Why is it needed?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: How should it work?
+    validations:
+      required: true
+  - type: textarea
+    id: affected
+    attributes:
+      label: Affected code
+      description: Modules, files, or areas of the codebase involved.
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Trade-offs, alternatives considered, open questions.
+    validations:
+      required: false
