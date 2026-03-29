@@ -1,3 +1,20 @@
+# WARNING: THIS APPLICATION IS UNMAINTAINED AND SHOULD NOT BE USED.
+
+**TLDR: I am current in the process of rewriting this application in Rust**
+
+The utility of kist has been proven by this proof-of-concept; I used it for a real product.
+However, there were several structural issues and bugs that bothered me.
+Rather than continuing to work on this version, I decided to port the application to Rust for various reasons:
+
+- more pleasant experience with Ratatui (immediate mode)
+- better rendering support for the symbol/fp renderer with tiny-skia
+- ease of distribution
+
+The core business logic in the rewrite is largely the same.
+
+Use this application at your own risk.
+
+---
 # kist
 
 **A lightweight component library manager for KiCad.**
